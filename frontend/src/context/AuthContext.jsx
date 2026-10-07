@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('udr_token');
       localStorage.removeItem('udr_user');
       setUser(null);
-      window.location.href = '/login';
+      window.location.hash = '#/login';
     }
   };
 

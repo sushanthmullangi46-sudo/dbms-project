@@ -25,8 +25,8 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('udr_token');
       localStorage.removeItem('udr_user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (!window.location.hash.includes('/login')) {
+        window.location.hash = '#/login';
       }
     }
     const message = error.response?.data?.message || error.message || 'Operation failed';
