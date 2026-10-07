@@ -68,6 +68,14 @@ const path = require('path');
 const frontendDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));
 
+// SPA Wildcard Route: send index.html for any frontend navigation
+app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+        return next();
+    }
+    res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
 // Centralized error handler
 app.use(errorHandler);
 
@@ -89,8 +97,10 @@ async function startServer() {
             console.warn('[ORACLE DB NOTE] Please run reset_oracle.bat to ensure Oracle XE is active and unlocked.');
         }
 
-        app.listen(PORT, () => {
-            console.log(`[HTTP SERVER] Running on http://localhost:${PORT}`);
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`[HTTP SERVER] Running on:`);
+            console.log(`  - Localhost: http://localhost:${PORT}`);
+            console.log(`  - Direct IP: http://127.0.0.1:${PORT}`);
             console.log(`[ENDPOINTS] Health check available at http://localhost:${PORT}/health`);
         });
     } catch (err) {
