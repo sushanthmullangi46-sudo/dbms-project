@@ -63,6 +63,11 @@ const ReportController = require('./controllers/reportController');
 const authenticateUser = require('./middleware/authMiddleware');
 app.get('/api/audit-logs', authenticateUser, ReportController.getAuditLogs);
 
+const path = require('path');
+// Serve static frontend build if present
+const frontendDist = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendDist));
+
 // Centralized error handler
 app.use(errorHandler);
 
