@@ -15,9 +15,17 @@ export function AuthProvider({ children }) {
     if (token) {
       api.get('/auth/me')
         .then((res) => {
-          if (res.success && res.user) {
-            setUser(res.user);
-            localStorage.setItem('udr_user', JSON.stringify(res.user));
+          if (res) {
+            const userData = {
+              userId: res.user_id || res.userId || res.user?.id,
+              fullName: res.full_name || res.fullName || res.user?.fullName,
+              email: res.email || res.user?.email,
+              roleName: res.role || res.roleName || res.user?.roleName,
+              role: res.role || res.roleName || res.user?.roleName,
+              phone: res.phone || res.user?.phone
+            };
+            setUser(userData);
+            localStorage.setItem('udr_user', JSON.stringify(userData));
           }
         })
         .catch(() => {
@@ -33,41 +41,67 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
-    if (res.success && res.token) {
-      localStorage.setItem('udr_token', res.token);
-      localStorage.setItem('udr_user', JSON.stringify(res.user));
-      setUser(res.user);
-      return res.user;
+    const token = res.access_token || res.token;
+    if (token) {
+      const userData = {
+        userId: res.user_id || res.userId || res.user?.id || 1,
+        fullName: res.full_name || res.fullName || res.user?.fullName || email.split('@')[0],
+        email: res.email || res.user?.email || email,
+        roleName: res.role || res.roleName || res.user?.roleName || 'DISASTER_OFFICER',
+        role: res.role || res.roleName || res.user?.roleName || 'DISASTER_OFFICER'
+      };
+      localStorage.setItem('udr_token', token);
+      localStorage.setItem('udr_user', JSON.stringify(userData));
+      setUser(userData);
+      return userData;
     }
-    throw new Error(res.message || 'Authentication failed');
+    throw new Error(res.detail || res.message || 'Authentication failed');
+  };
+
+  const register = async (userData) => {
+    const res = await api.post('/auth/register', userData);
+    const token = res.access_token || res.token;
+    if (token) {
+      const registeredUser = {
+        userId: res.user_id || 1,
+        fullName: res.full_name,
+        email: res.email,
+        roleName: res.role,
+        role: res.role
+      };
+      localStorage.setItem('udr_token', token);
+      localStorage.setItem('udr_user', JSON.stringify(registeredUser));
+      setUser(registeredUser);
+      return registeredUser;
+    }
+    return res;
   };
 
   const logout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch (e) {
-      // ignore
-    } finally {
-      localStorage.removeItem('udr_token');
-      localStorage.removeItem('udr_user');
-      setUser(null);
-      window.location.hash = '#/login';
-    }
+    localStorage.removeItem('udr_token');
+    localStorage.removeItem('udr_user');
+    setUser(null);
+    window.location.hash = '#/login';
   };
 
-  const isCommandCenter = user?.roleName === 'COMMAND_CENTER';
+  const isCitizen = user?.roleName === 'CITIZEN';
+  const isOfficer = user?.roleName === 'DISASTER_OFFICER' || user?.roleName === 'COMMAND_CENTER';
+  const isCoordinator = user?.roleName === 'COORDINATOR' || user?.roleName === 'RESOURCE_PROVIDER';
   const isResponder = user?.roleName === 'FIELD_RESPONDER';
-  const isProvider = user?.roleName === 'RESOURCE_PROVIDER';
 
   return (
     <AuthContext.Provider value={{
       user,
       loading,
       login,
+      register,
       logout,
-      isCommandCenter,
+      isCitizen,
+      isOfficer,
+      isCoordinator,
       isResponder,
-      isProvider
+      isCommandCenter: isOfficer,
+      isProvider: isCoordinator
     }}>
       {children}
     </AuthContext.Provider>

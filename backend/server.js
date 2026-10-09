@@ -73,7 +73,11 @@ app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
         return next();
     }
-    res.sendFile(path.join(frontendDist, 'index.html'));
+    res.sendFile(path.join(frontendDist, 'index.html'), (err) => {
+        if (err && !res.headersSent) {
+            next(err);
+        }
+    });
 });
 
 // Centralized error handler
@@ -97,11 +101,24 @@ async function startServer() {
             console.warn('[ORACLE DB NOTE] Please run reset_oracle.bat to ensure Oracle XE is active and unlocked.');
         }
 
-        app.listen(PORT, '0.0.0.0', () => {
+        // Dual-stack listen (binds to both IPv6 ::1 and IPv4 127.0.0.1)
+        const server = app.listen(PORT, () => {
             console.log(`[HTTP SERVER] Running on:`);
             console.log(`  - Localhost: http://localhost:${PORT}`);
             console.log(`  - Direct IP: http://127.0.0.1:${PORT}`);
             console.log(`[ENDPOINTS] Health check available at http://localhost:${PORT}/health`);
+        });
+
+        server.on('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                console.error(`[PORT CONFLICT] Port ${PORT} in use, retrying in 1s...`);
+                setTimeout(() => {
+                    server.close();
+                    server.listen(PORT);
+                }, 1000);
+            } else {
+                console.error('[HTTP SERVER ERROR]:', err);
+            }
         });
     } catch (err) {
         console.error('[FATAL SERVER ERROR]:', err);

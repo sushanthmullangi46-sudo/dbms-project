@@ -4,10 +4,34 @@
  */
 
 export const mockUsers = {
-  'admin@udrorp.com': {
-    userId: 1001,
+  'citizen@udrrms.com': {
+    userId: 1,
     roleId: 1,
-    roleName: 'COMMAND_CENTER',
+    roleName: 'CITIZEN',
+    fullName: 'Aarav Sharma (Citizen)',
+    email: 'citizen@udrrms.com',
+    phone: '+91-9880112233'
+  },
+  'officer@udrrms.com': {
+    userId: 2,
+    roleId: 2,
+    roleName: 'DISASTER_OFFICER',
+    fullName: 'Col. Rajesh Varma (Chief Officer)',
+    email: 'officer@udrrms.com',
+    phone: '+91-9880223344'
+  },
+  'coordinator@udrrms.com': {
+    userId: 3,
+    roleId: 3,
+    roleName: 'COORDINATOR',
+    fullName: 'Dr. Suresh Hegde (Relief Coordinator)',
+    email: 'coordinator@udrrms.com',
+    phone: '+91-9880334455'
+  },
+  'admin@udrorp.com': {
+    userId: 2,
+    roleId: 2,
+    roleName: 'DISASTER_OFFICER',
     fullName: 'Director Rajesh Sharma',
     email: 'admin@udrorp.com',
     phone: '+91-9880112233'
@@ -21,9 +45,9 @@ export const mockUsers = {
     phone: '+91-9845012345'
   },
   'provider@udrorp.com': {
-    userId: 1013,
+    userId: 3,
     roleId: 3,
-    roleName: 'RESOURCE_PROVIDER',
+    roleName: 'COORDINATOR',
     fullName: 'Apex Medical Supplies Ltd',
     email: 'provider@udrorp.com',
     phone: '+91-8023456781'
@@ -104,12 +128,20 @@ export const mockDashboard = {
 export const mockIncidents = [
   {
     INCIDENTID: 1001,
+    disaster_id: 1001,
+    incident_code: 'INC-20261009-BLR01',
     INCIDENTNAME: 'Bangalore North Zone Flash Flood',
+    disaster_name: 'Bangalore North Zone Flash Flood',
     INCIDENTTYPE: 'FLOOD',
+    disaster_type: 'Flood',
     SEVERITY: 'CRITICAL',
+    severity_level: 'CRITICAL',
     STATUS: 'ACTIVE',
+    status: 'ACTIVE',
     STARTTIME: '2026-10-06T04:30:00Z',
     LOCATIONNAME: 'Hebbal Flyover Junction',
+    location_name: 'Hebbal Flyover Junction',
+    ward_name: 'Hebbal Ward 21',
     CITY: 'Bangalore',
     LATITUDE: 13.0358,
     LONGITUDE: 77.5970,
@@ -121,12 +153,20 @@ export const mockIncidents = [
   },
   {
     INCIDENTID: 1002,
+    disaster_id: 1002,
+    incident_code: 'INC-20261009-BLR02',
     INCIDENTNAME: 'Manyata Commercial Basement Inundation',
+    disaster_name: 'Manyata Commercial Basement Inundation',
     INCIDENTTYPE: 'FLOOD',
+    disaster_type: 'Flash Flood',
     SEVERITY: 'HIGH',
+    severity_level: 'HIGH',
     STATUS: 'ACTIVE',
+    status: 'ACTIVE',
     STARTTIME: '2026-10-06T05:15:00Z',
     LOCATIONNAME: 'Manyata Embassy Business Park',
+    location_name: 'Manyata Embassy Business Park',
+    ward_name: 'Nagawara Ward 23',
     CITY: 'Bangalore',
     LATITUDE: 13.0475,
     LONGITUDE: 77.6200,
@@ -138,12 +178,20 @@ export const mockIncidents = [
   },
   {
     INCIDENTID: 1003,
+    disaster_id: 1003,
+    incident_code: 'INC-20261009-BLR03',
     INCIDENTNAME: 'Yelahanka Lake Breach & Silt Flow',
+    disaster_name: 'Yelahanka Lake Breach & Silt Flow',
     INCIDENTTYPE: 'STRUCTURAL_COLLAPSE',
+    disaster_type: 'Structural Collapse',
     SEVERITY: 'CRITICAL',
+    severity_level: 'CRITICAL',
     STATUS: 'ACTIVE',
+    status: 'ACTIVE',
     STARTTIME: '2026-10-06T06:00:00Z',
     LOCATIONNAME: 'Yelahanka Old Town Lake Basin',
+    location_name: 'Yelahanka Old Town Lake Basin',
+    ward_name: 'Yelahanka Ward 4',
     CITY: 'Bangalore',
     LATITUDE: 13.1007,
     LONGITUDE: 77.5963,
@@ -260,3 +308,138 @@ export const mockMapMarkers = {
     { RESPONDERID: 1002, TEAMNAME: 'EMS Trauma Response Unit 1', STATUS: 'DEPLOYED', LATITUDE: 13.0475, LONGITUDE: 77.6200 }
   ]
 };
+
+export const mockCitizenReports = [
+  {
+    report_id: 1,
+    report_reference_id: 'RPT-20261009-HB001',
+    disaster_type: 'Flood',
+    severity_level: 'CRITICAL',
+    location_name: 'Hebbal Flyover Junction',
+    ward_name: 'Hebbal Ward 21',
+    description: 'Outer Ring Road heavily submerged. Water reached 5 feet in apartment ground floors.',
+    people_affected: 150,
+    injuries_reported: 12,
+    missing_persons: 2,
+    trapped_persons: 18,
+    urgent_medical_needed: true,
+    evacuation_needed: true,
+    status: 'ACTIVE',
+    submitted_at: '2026-10-09T08:30:00Z',
+    updates: [
+      { update_id: 1, note: 'NDRF 10th Bn Alpha Squad deployed on scene with 2 rafts.', created_at: '2026-10-09T09:15:00Z', updated_by: 'Officer Col. Varma' },
+      { update_id: 2, note: '18 marooned citizens evacuated to Sahakarnagar Indoor Stadium.', created_at: '2026-10-09T10:00:00Z', updated_by: 'NDRF Team Lead' }
+    ]
+  },
+  {
+    report_id: 2,
+    report_reference_id: 'RPT-20261009-MY002',
+    disaster_type: 'Flash Flood',
+    severity_level: 'HIGH',
+    location_name: 'Manyata Embassy Business Park',
+    ward_name: 'Nagawara Ward 23',
+    description: 'Basement parking completely submerged. High voltage electrical transformer at risk.',
+    people_affected: 45,
+    injuries_reported: 2,
+    missing_persons: 0,
+    trapped_persons: 4,
+    urgent_medical_needed: false,
+    evacuation_needed: true,
+    status: 'VERIFIED',
+    submitted_at: '2026-10-09T09:00:00Z',
+    updates: []
+  },
+  {
+    report_id: 3,
+    report_reference_id: 'RPT-20261009-YL003',
+    disaster_type: 'Structural Collapse',
+    severity_level: 'CRITICAL',
+    location_name: 'Yelahanka Old Town Lake Basin',
+    ward_name: 'Yelahanka Ward 4',
+    description: 'Lake retaining wall breached causing rapid silt water surge into homes.',
+    people_affected: 210,
+    injuries_reported: 8,
+    missing_persons: 1,
+    trapped_persons: 15,
+    urgent_medical_needed: true,
+    evacuation_needed: true,
+    status: 'SUBMITTED',
+    submitted_at: '2026-10-09T10:30:00Z',
+    updates: []
+  }
+];
+
+export const mockHospitals = [
+  { hospital_id: 1, hospital_name: 'Columbia Asia Emergency Trauma Center', total_icu_beds: 35, available_icu_beds: 12, total_general_beds: 200, available_general_beds: 60, location: 'Hebbal', contact: '+91-80-66600000' },
+  { hospital_id: 2, hospital_name: 'Aster CMI Tertiary Care Hospital', total_icu_beds: 50, available_icu_beds: 18, total_general_beds: 300, available_general_beds: 95, location: 'Sahakarnagar', contact: '+91-80-43420100' },
+  { hospital_id: 3, hospital_name: 'Baptist Hospital Emergency Ward', total_icu_beds: 25, available_icu_beds: 7, total_general_beds: 150, available_general_beds: 38, location: 'Bellary Road', contact: '+91-80-22024700' }
+];
+
+export const mockLocations = [
+  { location_id: 1001, location_name: 'Hebbal Flyover Junction', ward_name: 'Hebbal Ward 21', risk_zone: 'CRITICAL', latitude: 13.0358, longitude: 77.5970 },
+  { location_id: 1002, location_name: 'Manyata Embassy Business Park', ward_name: 'Nagawara Ward 23', risk_zone: 'HIGH', latitude: 13.0475, longitude: 77.6200 },
+  { location_id: 1003, location_name: 'Yelahanka Old Town Lake Basin', ward_name: 'Yelahanka Ward 4', risk_zone: 'CRITICAL', latitude: 13.1007, longitude: 77.5963 },
+  { location_id: 1004, location_name: 'Jakkur Aerodrome Sector', ward_name: 'Jakkur Ward 5', risk_zone: 'MODERATE', latitude: 13.0784, longitude: 77.6048 },
+  { location_id: 1005, location_name: 'Nagawara Lake Lowlands', ward_name: 'Nagawara Ward 23', risk_zone: 'HIGH', latitude: 13.0450, longitude: 77.6150 },
+  { location_id: 1006, location_name: 'RT Nagar Central Market', ward_name: 'RT Nagar Ward 32', risk_zone: 'MODERATE', latitude: 13.0200, longitude: 77.5900 }
+];
+
+export const mockDeliveries = [
+  {
+    delivery_id: 1,
+    dispatch_reference: 'DSP-20261009-HB001',
+    allocation_id: 1,
+    destination: 'Hebbal Flyover Relief Camp',
+    carrier_info: 'KA-04-G-4412 (Constable K. Murthy)',
+    status: 'DELIVERED',
+    quantity_dispatched: 500,
+    dispatched_at: '2026-10-09T08:45:00Z',
+    delivered_at: '2026-10-09T09:40:00Z',
+    item_name: 'Emergency Food Rations & Potable Water',
+    receiver_name: 'Inspector Anand (Relief Lead)'
+  },
+  {
+    delivery_id: 2,
+    dispatch_reference: 'DSP-20261009-MY002',
+    allocation_id: 2,
+    destination: 'Manyata Business Park Depot',
+    carrier_info: 'KA-04-E-8890 (Driver R. Ramesh)',
+    status: 'DISPATCHED',
+    quantity_dispatched: 25,
+    dispatched_at: '2026-10-09T10:15:00Z',
+    delivered_at: null,
+    item_name: 'Medical Oxygen Cylinders 50L',
+    receiver_name: null
+  }
+];
+
+export const mockAnalytics = {
+  kpis: {
+    total_reports: 18,
+    active_incidents: 4,
+    closed_incidents: 14,
+    avg_verification_time_mins: 8.5,
+    avg_response_time_mins: 18.2,
+    deliveries_fulfilled_pct: 94
+  },
+  incidents_by_type: [
+    { name: 'Flood', count: 8 },
+    { name: 'Fire', count: 4 },
+    { name: 'Building collapse', count: 3 },
+    { name: 'Cyclone', count: 2 },
+    { name: 'Industrial', count: 1 }
+  ],
+  incidents_by_severity: [
+    { name: 'P1 - Critical', value: 5 },
+    { name: 'P2 - High', value: 7 },
+    { name: 'P3 - Moderate', value: 4 },
+    { name: 'P4 - Low', value: 2 }
+  ],
+  inventory_summary: [
+    { resource: 'Inflatable Rafts', stock: 12, allocated: 6, unit: 'Boats' },
+    { resource: 'Medical Oxygen', stock: 180, allocated: 65, unit: 'Cylinders' },
+    { resource: 'Food Rations', stock: 4200, allocated: 1500, unit: 'Kits' },
+    { resource: 'Dewatering Pumps', stock: 8, allocated: 4, unit: 'Pumps' }
+  ]
+};
+

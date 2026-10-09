@@ -301,7 +301,7 @@ function resolveFallbackQuery(sql, binds) {
             AVAILABILITYSTATUS: 'AVAILABLE',
             REGISTRATIONNUMBER: binds.registrationNumber || `SN-${id}`
         });
-        return { rowsAffected: 1 };
+        return { rowsAffected: 1, outBinds: { resId: [id], resourceId: id } };
     }
 
     return { rows: [] };

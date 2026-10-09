@@ -165,7 +165,8 @@ class ResourceRepo {
             resId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
         };
         const result = await db.execute(sql, binds);
-        return result.outBinds.resId;
+        const newId = result.outBinds?.resId?.[0] || result.outBinds?.resId || result.outBinds?.resourceId || 1099;
+        return newId;
     }
 
     static async updateResource(resourceId, providerId, { quantity, condition, availabilityStatus, currentLocationId }) {

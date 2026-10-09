@@ -72,13 +72,33 @@ class MapRepo {
         `;
         const vehRes = await db.execute(vehSql);
 
+        // 7. Municipal Risk Zones & Sectors
+        const locSql = `
+            SELECT l.LocationID AS "id", l.LocationName AS "name", l.RiskZone AS "riskZone",
+                   l.Zone AS "zone", l.Latitude AS "lat", l.Longitude AS "lng",
+                   l.Address AS "address"
+            FROM LOCATIONS l
+        `;
+        const locRes = await db.execute(locSql);
+        const rawLocations = locRes.rows || [];
+        const zones = rawLocations.map(l => ({
+            id: l.id || l.LOCATIONID,
+            name: l.name || l.LOCATIONNAME,
+            riskZone: l.riskZone || l.RISKZONE || 'MODERATE',
+            zone: l.zone || l.ZONE || 'Municipal Sector',
+            lat: Number(l.lat || l.LATITUDE),
+            lng: Number(l.lng || l.LONGITUDE),
+            address: l.address || l.ADDRESS
+        }));
+
         return {
             incidents: incRes.rows || [],
             requests: reqRes.rows || [],
             shelters: shelterRes.rows || [],
             warehouses: whRes.rows || [],
             responders: respRes.rows || [],
-            vehicles: vehRes.rows || []
+            vehicles: vehRes.rows || [],
+            zones
         };
     }
 }

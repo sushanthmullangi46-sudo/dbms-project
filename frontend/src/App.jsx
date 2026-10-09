@@ -7,8 +7,16 @@ import Spinner from './components/common/Spinner';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 
-// Command Center Pages
+// Citizen Portal Pages
+import CitizenDashboard from './pages/citizen/CitizenDashboard';
+import ReportDisasterPage from './pages/citizen/ReportDisasterPage';
+import ReportTrackingPage from './pages/citizen/ReportTrackingPage';
+import CitizenAssistancePage from './pages/citizen/CitizenAssistancePage';
+import CitizenSheltersPage from './pages/citizen/CitizenSheltersPage';
+
+// Officer / Command Center Pages
 import CommandDashboard from './pages/command/CommandDashboard';
+import VerificationQueuePage from './pages/officer/VerificationQueuePage';
 import IncidentsPage from './pages/command/IncidentsPage';
 import IncidentDetailPage from './pages/command/IncidentDetailPage';
 import RequestsPage from './pages/command/RequestsPage';
@@ -21,13 +29,19 @@ import WarehousesPage from './pages/command/WarehousesPage';
 import MapPage from './pages/command/MapPage';
 import ReportsPage from './pages/command/ReportsPage';
 import AuditLogsPage from './pages/command/AuditLogsPage';
+import OfficerClosurePage from './pages/officer/OfficerClosurePage';
+import OfficerAnalyticsPage from './pages/officer/OfficerAnalyticsPage';
 
-// Field Responder Pages
+// Coordinator Portal Pages
+import CoordinatorDashboard from './pages/coordinator/CoordinatorDashboard';
+import CoordinatorRequestsPage from './pages/coordinator/CoordinatorRequestsPage';
+import CoordinatorDeliveriesPage from './pages/coordinator/CoordinatorDeliveriesPage';
+import CoordinatorInventoryPage from './pages/coordinator/CoordinatorInventoryPage';
+
+// Field Responder & Provider Pages
 import ResponderDashboard from './pages/responder/ResponderDashboard';
 import ResponderMissions from './pages/responder/ResponderMissions';
 import ResponderHistory from './pages/responder/ResponderHistory';
-
-// Resource Provider Pages
 import ProviderDashboard from './pages/provider/ProviderDashboard';
 import ProviderResources from './pages/provider/ProviderResources';
 import ProviderAllocations from './pages/provider/ProviderAllocations';
@@ -40,7 +54,7 @@ function ProtectedRoute({ allowedRoles, children }) {
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-slate-950">
-        <Spinner size="lg" text="Authenticating tactical session with Oracle..." />
+        <Spinner size="lg" text="Authenticating session with Oracle UDRRMS database..." />
       </div>
     );
   }
@@ -50,14 +64,13 @@ function ProtectedRoute({ allowedRoles, children }) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.roleName)) {
-    // Redirect to default dashboard for user's role
-    if (user.roleName === 'FIELD_RESPONDER') {
-      return <Navigate to="/responder/dashboard" replace />;
+    if (user.roleName === 'CITIZEN') {
+      return <Navigate to="/citizen/dashboard" replace />;
     }
-    if (user.roleName === 'RESOURCE_PROVIDER') {
-      return <Navigate to="/provider/dashboard" replace />;
+    if (user.roleName === 'COORDINATOR' || user.roleName === 'RESOURCE_PROVIDER') {
+      return <Navigate to="/coordinator/dashboard" replace />;
     }
-    return <Navigate to="/command/dashboard" replace />;
+    return <Navigate to="/officer/dashboard" replace />;
   }
 
   return children;
@@ -70,7 +83,7 @@ function RootRedirect() {
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-slate-950">
-        <Spinner size="lg" text="Connecting to Oracle emergency database..." />
+        <Spinner size="lg" text="Connecting to Oracle database..." />
       </div>
     );
   }
@@ -79,79 +92,83 @@ function RootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.roleName === 'FIELD_RESPONDER') {
-    return <Navigate to="/responder/dashboard" replace />;
+  if (user.roleName === 'CITIZEN') {
+    return <Navigate to="/citizen/dashboard" replace />;
   }
-  if (user.roleName === 'RESOURCE_PROVIDER') {
-    return <Navigate to="/provider/dashboard" replace />;
+  if (user.roleName === 'COORDINATOR' || user.roleName === 'RESOURCE_PROVIDER') {
+    return <Navigate to="/coordinator/dashboard" replace />;
   }
-  return <Navigate to="/command/dashboard" replace />;
+  return <Navigate to="/officer/dashboard" replace />;
 }
 
 export default function App() {
   return (
     <Routes>
-      {/* Public Login Route */}
+      {/* Public Login & Register */}
       <Route path="/login" element={<LoginPage />} />
 
       {/* Root Landing Dispatcher */}
       <Route path="/" element={<RootRedirect />} />
 
-      {/* Command Center Portal (RBAC Protected: COMMAND_CENTER) */}
+      {/* 1. Citizen Portal (RBAC: CITIZEN) */}
       <Route
-        path="/command"
+        path="/citizen"
         element={
-          <ProtectedRoute allowedRoles={['COMMAND_CENTER']}>
+          <ProtectedRoute allowedRoles={['CITIZEN']}>
             <Layout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/command/dashboard" replace />} />
+        <Route index element={<Navigate to="/citizen/dashboard" replace />} />
+        <Route path="dashboard" element={<CitizenDashboard />} />
+        <Route path="report" element={<ReportDisasterPage />} />
+        <Route path="tracking" element={<ReportTrackingPage />} />
+        <Route path="assistance" element={<CitizenAssistancePage />} />
+        <Route path="shelters" element={<CitizenSheltersPage />} />
+      </Route>
+
+      {/* 2. Disaster Officer Portal (RBAC: DISASTER_OFFICER, COMMAND_CENTER) */}
+      <Route
+        path="/officer"
+        element={
+          <ProtectedRoute allowedRoles={['DISASTER_OFFICER', 'COMMAND_CENTER']}>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/officer/dashboard" replace />} />
         <Route path="dashboard" element={<CommandDashboard />} />
+        <Route path="verification" element={<VerificationQueuePage />} />
         <Route path="incidents" element={<IncidentsPage />} />
         <Route path="incidents/:id" element={<IncidentDetailPage />} />
-        <Route path="requests" element={<RequestsPage />} />
+        <Route path="teams" element={<RespondersPage />} />
         <Route path="missions" element={<MissionsPage />} />
-        <Route path="resources" element={<ResourcesPage />} />
-        <Route path="responders" element={<RespondersPage />} />
-        <Route path="inventory" element={<InventoryPage />} />
-        <Route path="shelters" element={<SheltersPage />} />
-        <Route path="warehouses" element={<WarehousesPage />} />
         <Route path="map" element={<MapPage />} />
-        <Route path="reports" element={<ReportsPage />} />
+        <Route path="closure" element={<OfficerClosurePage />} />
+        <Route path="analytics" element={<OfficerAnalyticsPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
       </Route>
 
-      {/* Field Responder Portal (RBAC Protected: FIELD_RESPONDER) */}
+      {/* 3. Relief Coordinator Portal (RBAC: COORDINATOR, RESOURCE_PROVIDER) */}
       <Route
-        path="/responder"
+        path="/coordinator"
         element={
-          <ProtectedRoute allowedRoles={['FIELD_RESPONDER']}>
+          <ProtectedRoute allowedRoles={['COORDINATOR', 'RESOURCE_PROVIDER']}>
             <Layout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/responder/dashboard" replace />} />
-        <Route path="dashboard" element={<ResponderDashboard />} />
-        <Route path="missions" element={<ResponderMissions />} />
-        <Route path="history" element={<ResponderHistory />} />
+        <Route index element={<Navigate to="/coordinator/dashboard" replace />} />
+        <Route path="dashboard" element={<CoordinatorDashboard />} />
+        <Route path="requests" element={<CoordinatorRequestsPage />} />
+        <Route path="deliveries" element={<CoordinatorDeliveriesPage />} />
+        <Route path="inventory" element={<CoordinatorInventoryPage />} />
       </Route>
 
-      {/* Resource Provider Portal (RBAC Protected: RESOURCE_PROVIDER) */}
-      <Route
-        path="/provider"
-        element={
-          <ProtectedRoute allowedRoles={['RESOURCE_PROVIDER']}>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/provider/dashboard" replace />} />
-        <Route path="dashboard" element={<ProviderDashboard />} />
-        <Route path="resources" element={<ProviderResources />} />
-        <Route path="allocations" element={<ProviderAllocations />} />
-        <Route path="handovers" element={<ProviderHandovers />} />
-      </Route>
+      {/* Backwards-compatibility aliases */}
+      <Route path="/command/*" element={<Navigate to="/officer/dashboard" replace />} />
+      <Route path="/responder/*" element={<Navigate to="/officer/dashboard" replace />} />
+      <Route path="/provider/*" element={<Navigate to="/coordinator/dashboard" replace />} />
 
       {/* Catch-all Wildcard Route */}
       <Route path="*" element={<RootRedirect />} />
