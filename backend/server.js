@@ -63,6 +63,42 @@ const ReportController = require('./controllers/reportController');
 const authenticateUser = require('./middleware/authMiddleware');
 app.get('/api/audit-logs', authenticateUser, ReportController.getAuditLogs);
 
+// Internal Service Forwarding: Forward /api/v1 requests to internal backend_py service using Vercel binding
+app.use('/api/v1', async (req, res, next) => {
+    const pythonBase = process.env.BACKEND_PY_URL || process.env.PYTHON_BACKEND_URL || 'http://127.0.0.1:8000';
+    try {
+        const targetUrl = new URL(`/api/v1${req.url}`, pythonBase);
+        const headers = { ...req.headers };
+        delete headers.host;
+
+        const fetchOptions = {
+            method: req.method,
+            headers: {
+                ...headers,
+                'Content-Type': req.headers['content-type'] || 'application/json'
+            }
+        };
+
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
+            fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        }
+
+        const pyRes = await fetch(targetUrl, fetchOptions);
+        res.status(pyRes.status);
+        pyRes.headers.forEach((val, key) => {
+            if (key !== 'content-encoding' && key !== 'transfer-encoding') {
+                res.setHeader(key, val);
+            }
+        });
+
+        const data = await pyRes.arrayBuffer();
+        return res.send(Buffer.from(data));
+    } catch (err) {
+        console.warn(`[PYTHON SERVICE BINDING] Error contacting internal service at ${pythonBase}:`, err.message);
+        return next();
+    }
+});
+
 const path = require('path');
 // Serve static frontend build if present
 const frontendDist = path.join(__dirname, '../frontend/dist');
@@ -139,4 +175,8 @@ process.on('SIGTERM', async () => {
     process.exit(0);
 });
 
-startServer();
+if (require.main === module) {
+    startServer();
+}
+
+module.exports = app;
