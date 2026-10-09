@@ -1,9 +1,14 @@
 # Urban Disaster Relief and Resource Management System (UDRRMS)
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-2563eb?logo=github&style=for-the-badge)](https://sushanthmullangi46-sudo.github.io/dbms-project/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI%200.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![Database](https://img.shields.io/badge/Database-Oracle%2021c%20(3NF)-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/database/)
 [![Tests](https://img.shields.io/badge/Tests-14%2F14%20Passed%20(100%25)-brightgreen)](docs/TEST_RESULTS.md)
+
+> 🌐 **Permanent Live Application Link:**  
+> **[https://sushanthmullangi46-sudo.github.io/dbms-project/](https://sushanthmullangi46-sudo.github.io/dbms-project/)**  
+> *(Runs standalone 100% in-browser with zero network errors, featuring 1-click test logins for Citizen, Officer, and Coordinator personas.)*
 
 An enterprise-grade, event-driven multi-agency disaster operations management system designed for urban emergency coordination. Built around a **strict 13-stage sequential response workflow** from initial citizen emergency reporting through incident verification, severity assessment, rescue squad dispatch, transactional inventory allocation, shelter placement, and audit-verified incident closure.
 
