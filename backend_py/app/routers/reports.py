@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models.schema import DisasterReport, ReportUpdate, DisasterLocation, UserAccount
-from app.schemas.dtos import DisasterReportCreate, ReportUpdateCreate
+from app.schemas.dtos import DisasterReportCreate, ReportUpdateCreate, AssistanceRequestCreate
 from app.auth.security import get_current_user
 from app.services.workflow_service import WorkflowService
 
@@ -132,11 +132,38 @@ def add_report_update(
     if current_user.role.role_name == "CITIZEN" and report.reporter_user_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="Cannot post updates to another citizen's report")
 
+    msg = update_in.message or update_in.update_text or update_in.note or "Status update"
     upd = ReportUpdate(
         report_id=report.report_id,
         author_id=current_user.user_id,
-        message=update_in.message
+        message=msg
     )
     db.add(upd)
     db.commit()
     return {"success": True, "message": "Supplemental update logged successfully"}
+
+@router.post("/{report_id}/assistance-request")
+def request_assistance_for_report(
+    report_id: int,
+    req_in: AssistanceRequestCreate,
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    report = db.query(DisasterReport).filter(DisasterReport.report_id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    note_text = f"[ASSISTANCE REQUEST: {req_in.request_type}] For {req_in.quantity_or_people} people. Notes: {req_in.notes or 'None'}"
+    upd = ReportUpdate(
+        report_id=report.report_id,
+        author_id=current_user.user_id,
+        message=note_text
+    )
+    db.add(upd)
+    db.commit()
+    return {
+        "success": True,
+        "message": "Assistance request logged with disaster command center",
+        "report_id": report_id,
+        "request_type": req_in.request_type
+    }

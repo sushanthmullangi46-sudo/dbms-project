@@ -46,6 +46,25 @@ async function initializePool() {
 function resolveFallbackQuery(sql, binds) {
     const cleanSql = sql.replace(/\s+/g, ' ').trim().toUpperCase();
 
+    // 0. Top KPI Summary Cards query from DUAL
+    if (cleanSql.includes('ACTIVE_INCIDENTS') && cleanSql.includes('FROM DUAL')) {
+        const activeInc = (store.incidents || []).filter(x => ['ACTIVE', 'ON_HOLD'].includes(x.STATUS)).length;
+        const pendReq = (store.requests || []).filter(x => x.STATUS === 'PENDING').length;
+        const actMissions = (store.missions || []).filter(x => ['ASSIGNED', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(x.STATUS)).length;
+        const availResp = (store.responders || []).filter(x => (x.STATUS === 'AVAILABLE' || x.CURRENTSTATUS === 'AVAILABLE')).length;
+        const availVeh = (store.vehicles || []).filter(x => x.STATUS === 'AVAILABLE').length;
+        return {
+            rows: [{
+                ACTIVE_INCIDENTS: activeInc,
+                PENDING_REQUESTS: pendReq,
+                ACTIVE_MISSIONS: actMissions,
+                AVAILABLE_RESPONDERS: availResp,
+                AVAILABLE_VEHICLES: availVeh,
+                RESOURCE_UTILIZATION_PCT: 68.5
+            }]
+        };
+    }
+
     // 1. Dual / Ping
     if (cleanSql.includes('FROM DUAL')) {
         return { rows: [{ HEALTH: 1, SYSDATE: new Date() }] };

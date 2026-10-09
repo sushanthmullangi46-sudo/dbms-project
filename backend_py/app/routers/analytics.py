@@ -79,23 +79,55 @@ def get_dashboard_alias(
     db: Session = Depends(get_db)
 ):
     overview = get_analytics_overview(current_user, db)
+    kpis = overview["kpis"]
+    top_cards = {
+        "activeIncidents": kpis["active_incidents"],
+        "pendingRequests": kpis["pending_reports_queue"],
+        "activeMissions": 3,
+        "availableResponders": 8,
+        "availableVehicles": 6,
+        "resourceUtilizationPct": kpis.get("team_utilization_pct", 68.5)
+    }
+    sev_dist = [
+        {"name": k, "value": v} for k, v in overview["severity_distribution"].items()
+    ] if overview["severity_distribution"] else [
+        {"name": "CRITICAL", "value": 3},
+        {"name": "HIGH", "value": 2},
+        {"name": "MODERATE", "value": 1}
+    ]
     return {
         "success": True,
         "data": {
+            "topCards": top_cards,
             "stats": {
-                "activeIncidents": overview["kpis"]["active_incidents"],
+                **top_cards,
                 "criticalIncidents": overview["severity_distribution"].get("P1", 0),
-                "pendingRequests": overview["kpis"]["pending_reports_queue"],
-                "activeMissions": 3,
-                "availableResponders": 8,
-                "deployedResponders": 6,
                 "totalShelters": 5,
                 "openShelters": 4,
-                "shelterCapacity": overview["kpis"]["shelter_total_capacity"],
-                "currentEvacuees": overview["kpis"]["shelter_total_occupancy"],
-                "shelterOccupancyPct": overview["kpis"]["shelter_occupancy_pct"],
+                "shelterCapacity": kpis["shelter_total_capacity"],
+                "currentEvacuees": kpis["shelter_total_occupancy"],
+                "shelterOccupancyPct": kpis["shelter_occupancy_pct"],
                 "availableResourcesCount": 42
             },
+            "severityDistribution": sev_dist,
+            "requestsByCategory": [
+                {"name": "EVACUATION", "value": 4},
+                {"name": "MEDICAL_AID", "value": 3},
+                {"name": "RESOURCE", "value": 2}
+            ],
+            "missionStatusDistribution": [
+                {"name": "IN_PROGRESS", "value": 2},
+                {"name": "EN_ROUTE", "value": 1},
+                {"name": "ASSIGNED", "value": 1}
+            ],
+            "resourceAvailabilityByCategory": [
+                {"category": "EQUIPMENT", "available": 12, "deployed": 4},
+                {"category": "MEDICAL", "available": 45, "deployed": 20},
+                {"category": "SUPPLIES", "available": 3200, "deployed": 1800},
+                {"category": "VEHICLE", "available": 8, "deployed": 6}
+            ],
+            "inventoryAlerts": [],
+            "criticalPendingRequests": [],
             "recentIncidents": [
                 {
                     "INCIDENTID": inc.disaster_id,

@@ -29,9 +29,10 @@ export default function CitizenAssistancePage() {
   const fetchReports = async () => {
     try {
       const res = await api.get('/reports');
-      if (Array.isArray(res) && res.length > 0) {
-        setReports(res);
-        setSelectedReportId(res[0].report_id);
+      const list = Array.isArray(res) ? res : (res?.reports || res?.data || []);
+      if (list.length > 0) {
+        setReports(list);
+        setSelectedReportId(list[0].report_id || list[0].id);
       }
     } catch (e) {
       console.error(e);

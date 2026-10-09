@@ -147,6 +147,85 @@ const auditLogs = [
   { LOGID: 1003, USERID: 1004, ACTION: 'STATUS_UPDATE', TABLENAME: 'MISSIONS', RECORDID: 1001, DETAILS: 'Mission #1001 moved to IN_PROGRESS', TIMESTAMP: '2026-10-06T05:25:00Z', USERNAME: 'Captain Arvind Rao', IPADDRESS: '192.168.1.55' }
 ];
 
+// 16. CITIZEN DISASTER REPORTS
+const citizenReports = [
+  {
+    report_id: 1,
+    id: 1,
+    report_reference_id: 'RPT-20261009-HB001',
+    disaster_type: 'Flood',
+    severity_level: 'CRITICAL',
+    severity: 'CRITICAL',
+    location_id: 1001,
+    location_name: 'Hebbal Flyover Junction',
+    ward_name: 'Hebbal Ward 21',
+    description: 'Outer Ring Road heavily submerged. Water reached 5 feet in apartment ground floors.',
+    people_affected: 150,
+    injuries_reported: 12,
+    missing_persons: 2,
+    trapped_persons: 18,
+    urgent_medical_needed: true,
+    evacuation_needed: true,
+    status: 'ACTIVE',
+    lat: 13.0358,
+    lng: 77.5970,
+    latitude: 13.0358,
+    longitude: 77.5970,
+    submitted_at: '2026-10-09T08:30:00Z',
+    updates: []
+  },
+  {
+    report_id: 2,
+    id: 2,
+    report_reference_id: 'RPT-20261009-MY002',
+    disaster_type: 'Flash Flood',
+    severity_level: 'HIGH',
+    severity: 'HIGH',
+    location_id: 1002,
+    location_name: 'Manyata Embassy Business Park',
+    ward_name: 'Nagawara Ward 23',
+    description: 'Basement parking completely submerged. High voltage electrical transformer at risk.',
+    people_affected: 45,
+    injuries_reported: 2,
+    missing_persons: 0,
+    trapped_persons: 4,
+    urgent_medical_needed: false,
+    evacuation_needed: true,
+    status: 'VERIFIED',
+    lat: 13.0475,
+    lng: 77.6200,
+    latitude: 13.0475,
+    longitude: 77.6200,
+    submitted_at: '2026-10-09T09:00:00Z',
+    updates: []
+  },
+  {
+    report_id: 3,
+    id: 3,
+    report_reference_id: 'RPT-20261009-YL003',
+    disaster_type: 'Structural Collapse',
+    severity_level: 'CRITICAL',
+    severity: 'CRITICAL',
+    location_id: 1003,
+    location_name: 'Yelahanka Old Town Lake Basin',
+    ward_name: 'Yelahanka Ward 4',
+    description: 'Lake retaining wall breached causing rapid silt water surge into homes.',
+    people_affected: 210,
+    injuries_reported: 8,
+    missing_persons: 1,
+    trapped_persons: 15,
+    urgent_medical_needed: true,
+    evacuation_needed: true,
+    status: 'SUBMITTED',
+    lat: 13.1007,
+    lng: 77.5963,
+    latitude: 13.1007,
+    longitude: 77.5963,
+    submitted_at: '2026-10-09T10:30:00Z',
+    updates: []
+  }
+];
+
 module.exports = {
   roles,
   users,
@@ -163,5 +242,6 @@ module.exports = {
   inventory,
   fieldReports,
   auditLogs,
+  citizenReports,
   seq
 };

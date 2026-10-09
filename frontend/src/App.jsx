@@ -143,9 +143,40 @@ export default function App() {
         <Route path="incidents/:id" element={<IncidentDetailPage />} />
         <Route path="teams" element={<RespondersPage />} />
         <Route path="missions" element={<MissionsPage />} />
+        <Route path="requests" element={<RequestsPage />} />
+        <Route path="resources" element={<ResourcesPage />} />
+        <Route path="inventory" element={<InventoryPage />} />
+        <Route path="shelters" element={<SheltersPage />} />
+        <Route path="warehouses" element={<WarehousesPage />} />
         <Route path="map" element={<MapPage />} />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="closure" element={<OfficerClosurePage />} />
         <Route path="analytics" element={<OfficerAnalyticsPage />} />
+        <Route path="audit-logs" element={<AuditLogsPage />} />
+      </Route>
+
+      {/* 2b. Command Center Direct Routes */}
+      <Route
+        path="/command"
+        element={
+          <ProtectedRoute allowedRoles={['DISASTER_OFFICER', 'COMMAND_CENTER']}>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/command/dashboard" replace />} />
+        <Route path="dashboard" element={<CommandDashboard />} />
+        <Route path="incidents" element={<IncidentsPage />} />
+        <Route path="incidents/:id" element={<IncidentDetailPage />} />
+        <Route path="map" element={<MapPage />} />
+        <Route path="requests" element={<RequestsPage />} />
+        <Route path="missions" element={<MissionsPage />} />
+        <Route path="resources" element={<ResourcesPage />} />
+        <Route path="responders" element={<RespondersPage />} />
+        <Route path="inventory" element={<InventoryPage />} />
+        <Route path="shelters" element={<SheltersPage />} />
+        <Route path="warehouses" element={<WarehousesPage />} />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
       </Route>
 
@@ -165,10 +196,36 @@ export default function App() {
         <Route path="inventory" element={<CoordinatorInventoryPage />} />
       </Route>
 
-      {/* Backwards-compatibility aliases */}
-      <Route path="/command/*" element={<Navigate to="/officer/dashboard" replace />} />
-      <Route path="/responder/*" element={<Navigate to="/officer/dashboard" replace />} />
-      <Route path="/provider/*" element={<Navigate to="/coordinator/dashboard" replace />} />
+      {/* 4. Tactical Field Responder Portal (RBAC: FIELD_RESPONDER, COMMAND_CENTER, DISASTER_OFFICER) */}
+      <Route
+        path="/responder"
+        element={
+          <ProtectedRoute allowedRoles={['FIELD_RESPONDER', 'COMMAND_CENTER', 'DISASTER_OFFICER']}>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/responder/dashboard" replace />} />
+        <Route path="dashboard" element={<ResponderDashboard />} />
+        <Route path="missions" element={<ResponderMissions />} />
+        <Route path="history" element={<ResponderHistory />} />
+      </Route>
+
+      {/* 5. Resource Provider Portal (RBAC: RESOURCE_PROVIDER, COORDINATOR, COMMAND_CENTER) */}
+      <Route
+        path="/provider"
+        element={
+          <ProtectedRoute allowedRoles={['RESOURCE_PROVIDER', 'COORDINATOR', 'COMMAND_CENTER']}>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/provider/dashboard" replace />} />
+        <Route path="dashboard" element={<ProviderDashboard />} />
+        <Route path="resources" element={<ProviderResources />} />
+        <Route path="allocations" element={<ProviderAllocations />} />
+        <Route path="handovers" element={<ProviderHandovers />} />
+      </Route>
 
       {/* Catch-all Wildcard Route */}
       <Route path="*" element={<RootRedirect />} />

@@ -1,6 +1,53 @@
 const db = require('../config/database');
 
 class ReportRepo {
+    static async createReport(data, user) {
+        const store = require('../config/memoryStore');
+        const loc = store.locations.find(l => l.LOCATIONID === Number(data.location_id)) || store.locations[0];
+        const newId = ++store.seq.report;
+        const refSuffix = Math.floor(Math.random() * 900 + 100);
+        const report = {
+            report_id: newId,
+            id: newId,
+            report_reference_id: `RPT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-BN${refSuffix}`,
+            disaster_type: data.disaster_type || 'Flood',
+            severity_level: Number(data.trapped_persons || 0) > 0 || data.urgent_medical_needed ? 'CRITICAL' : Number(data.injuries_reported || 0) > 0 ? 'HIGH' : 'MODERATE',
+            severity: Number(data.trapped_persons || 0) > 0 || data.urgent_medical_needed ? 'CRITICAL' : Number(data.injuries_reported || 0) > 0 ? 'HIGH' : 'MODERATE',
+            location_id: loc.LOCATIONID,
+            location_name: loc.LOCATIONNAME,
+            ward_name: loc.ZONE || 'North Sector',
+            description: data.description || 'Emergency incident reported by citizen',
+            people_affected: Number(data.people_affected || 1),
+            injuries_reported: Number(data.injuries_reported || 0),
+            missing_persons: Number(data.missing_persons || 0),
+            trapped_persons: Number(data.trapped_persons || 0),
+            urgent_medical_needed: Boolean(data.urgent_medical_needed),
+            evacuation_needed: Boolean(data.evacuation_needed),
+            status: 'SUBMITTED',
+            lat: loc.LATITUDE,
+            lng: loc.LONGITUDE,
+            latitude: loc.LATITUDE,
+            longitude: loc.LONGITUDE,
+            submitted_at: new Date().toISOString(),
+            reporter_user_id: user?.userId || 1001,
+            updates: []
+        };
+        store.citizenReports.unshift(report);
+        return report;
+    }
+
+    static async listReports(filters = {}) {
+        const store = require('../config/memoryStore');
+        let reports = [...(store.citizenReports || [])];
+        if (filters.status && filters.status !== 'ALL') {
+            reports = reports.filter(r => r.status === filters.status);
+        }
+        if (filters.disaster_type) {
+            reports = reports.filter(r => r.disaster_type.toLowerCase() === filters.disaster_type.toLowerCase());
+        }
+        return reports;
+    }
+
     static async getReport(reportId) {
         let sql = '';
         const id = parseInt(reportId, 10);

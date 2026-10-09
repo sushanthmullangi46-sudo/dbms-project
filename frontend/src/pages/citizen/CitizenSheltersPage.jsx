@@ -43,6 +43,8 @@ export default function CitizenSheltersPage() {
 
       if (Array.isArray(hospRes)) {
         setHospitals(hospRes);
+      } else if (hospRes && hospRes.hospitals) {
+        setHospitals(hospRes.hospitals);
       }
     } catch (e) {
       console.error(e);

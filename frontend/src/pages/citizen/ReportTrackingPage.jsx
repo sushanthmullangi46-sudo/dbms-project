@@ -37,7 +37,7 @@ export default function ReportTrackingPage() {
       const idToFetch = reportIdParam || 1;
       const res = await api.get(`/reports/${idToFetch}`);
       if (res) {
-        setReport(res);
+        setReport(res.report || res);
       }
     } catch (e) {
       console.error('Failed to fetch report details:', e);
@@ -53,7 +53,8 @@ export default function ReportTrackingPage() {
     setSubmittingUpdate(true);
     try {
       await api.post(`/reports/${report?.report_id || 1}/updates`, {
-        update_text: updateNote
+        update_text: updateNote,
+        message: updateNote
       });
       success('Supplementary information added to disaster log!');
       setUpdateNote('');

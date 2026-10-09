@@ -52,7 +52,14 @@ class ReportVerificationAction(BaseModel):
     target_report_id: Optional[int] = None # For duplicates
 
 class ReportUpdateCreate(BaseModel):
-    message: str
+    message: Optional[str] = None
+    update_text: Optional[str] = None
+    note: Optional[str] = None
+
+class AssistanceRequestCreate(BaseModel):
+    request_type: str = "GENERAL"
+    quantity_or_people: int = 1
+    notes: Optional[str] = None
 
 # Severity Assessment & Activation
 class SeverityAssessmentRequest(BaseModel):

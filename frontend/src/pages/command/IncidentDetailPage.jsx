@@ -65,7 +65,7 @@ export default function IncidentDetailPage() {
     return (
       <div className="p-8 text-center text-slate-400">
         <p>Incident not found.</p>
-        <Link to="/command/incidents" className="text-brand-400 underline text-xs mt-2 inline-block">
+        <Link to="/officer/incidents" className="text-brand-400 underline text-xs mt-2 inline-block">
           Return to Incidents List
         </Link>
       </div>
@@ -86,18 +86,18 @@ export default function IncidentDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
         <div className="flex items-center space-x-3">
           <Link
-            to="/command/incidents"
+            to="/officer/incidents"
             className="p-2 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-mono text-xs text-brand-400 font-bold">INCIDENT #{incident.INCIDENTID}</span>
-              <Badge text={incident.SEVERITY} />
-              <Badge text={incident.STATUS} />
+              <span className="font-mono text-xs text-brand-400 font-bold">INCIDENT #{incident.INCIDENTID || incident.disaster_id || id}</span>
+              <Badge text={incident.SEVERITY || incident.severity_level || 'CRITICAL'} />
+              <Badge text={incident.STATUS || incident.status || 'ACTIVE'} />
             </div>
-            <h2 className="text-xl font-black text-white mt-0.5">{incident.INCIDENTNAME}</h2>
+            <h2 className="text-xl font-black text-white mt-0.5">{incident.INCIDENTNAME || incident.disaster_name || 'Disaster Incident'}</h2>
           </div>
         </div>
 

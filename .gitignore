@@ -28,3 +28,11 @@ $RECYCLE.BIN/
 # IDE files
 .vscode/
 .idea/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+.pytest_cache/
+

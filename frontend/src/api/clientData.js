@@ -291,30 +291,42 @@ export const mockMissions = [
 
 export const mockMapMarkers = {
   incidents: [
-    { INCIDENTID: 1001, INCIDENTNAME: 'Bangalore North Zone Flash Flood', INCIDENTTYPE: 'FLOOD', SEVERITY: 'CRITICAL', STATUS: 'ACTIVE', LATITUDE: 13.0358, LONGITUDE: 77.5970, LOCATIONNAME: 'Hebbal Flyover Junction' },
-    { INCIDENTID: 1002, INCIDENTNAME: 'Manyata Commercial Basement Inundation', INCIDENTTYPE: 'FLOOD', SEVERITY: 'HIGH', STATUS: 'ACTIVE', LATITUDE: 13.0475, LONGITUDE: 77.6200, LOCATIONNAME: 'Manyata Embassy Business Park' },
-    { INCIDENTID: 1003, INCIDENTNAME: 'Yelahanka Lake Breach & Silt Flow', INCIDENTTYPE: 'STRUCTURAL_COLLAPSE', SEVERITY: 'CRITICAL', STATUS: 'ACTIVE', LATITUDE: 13.1007, LONGITUDE: 77.5963, LOCATIONNAME: 'Yelahanka Old Town Lake Basin' }
+    { id: 1001, INCIDENTID: 1001, title: 'Bangalore North Zone Flash Flood', INCIDENTNAME: 'Bangalore North Zone Flash Flood', type: 'FLOOD', INCIDENTTYPE: 'FLOOD', severity: 'CRITICAL', SEVERITY: 'CRITICAL', status: 'ACTIVE', STATUS: 'ACTIVE', lat: 13.0358, lng: 77.5970, LATITUDE: 13.0358, LONGITUDE: 77.5970, location: 'Hebbal Flyover Junction', LOCATIONNAME: 'Hebbal Flyover Junction', description: 'Canal breach causing 5ft deep inundation of arterial roads' },
+    { id: 1002, INCIDENTID: 1002, title: 'Manyata Commercial Basement Inundation', INCIDENTNAME: 'Manyata Commercial Basement Inundation', type: 'FLOOD', INCIDENTTYPE: 'FLOOD', severity: 'HIGH', SEVERITY: 'HIGH', status: 'ACTIVE', STATUS: 'ACTIVE', lat: 13.0475, lng: 77.6200, LATITUDE: 13.0475, LONGITUDE: 77.6200, location: 'Manyata Embassy Business Park', LOCATIONNAME: 'Manyata Embassy Business Park', description: 'Basement levels 1 and 2 flooded with vehicle traps' },
+    { id: 1003, INCIDENTID: 1003, title: 'Yelahanka Lake Breach & Silt Flow', INCIDENTNAME: 'Yelahanka Lake Breach & Silt Flow', type: 'STRUCTURAL_COLLAPSE', INCIDENTTYPE: 'STRUCTURAL_COLLAPSE', severity: 'CRITICAL', SEVERITY: 'CRITICAL', status: 'ACTIVE', STATUS: 'ACTIVE', lat: 13.1007, lng: 77.5963, LATITUDE: 13.1007, LONGITUDE: 77.5963, location: 'Yelahanka Old Town Lake Basin', LOCATIONNAME: 'Yelahanka Old Town Lake Basin', description: 'Retaining wall failure, rapid silt water surge into homes' }
   ],
   shelters: [
-    { SHELTERID: 1001, SHELTERNAME: 'Sahakarnagar Indoor Stadium Shelter', CAPACITY: 500, CURRENTOCCUPANCY: 180, STATUS: 'OPEN', LATITUDE: 13.0623, LONGITUDE: 77.5871 },
-    { SHELTERID: 1002, SHELTERNAME: 'Jakkur Government High School Camp', CAPACITY: 300, CURRENTOCCUPANCY: 140, STATUS: 'OPEN', LATITUDE: 13.0784, LONGITUDE: 77.6048 }
+    { id: 1001, SHELTERID: 1001, title: 'Sahakarnagar Indoor Stadium Shelter', SHELTERNAME: 'Sahakarnagar Indoor Stadium Shelter', capacity: 500, CAPACITY: 500, occupancy: 180, CURRENTOCCUPANCY: 180, status: 'OPEN', STATUS: 'OPEN', lat: 13.0623, lng: 77.5871, LATITUDE: 13.0623, LONGITUDE: 77.5871, location: 'Sahakarnagar Community Hub' },
+    { id: 1002, SHELTERID: 1002, title: 'Jakkur Government High School Camp', SHELTERNAME: 'Jakkur Government High School Camp', capacity: 300, CAPACITY: 300, occupancy: 140, CURRENTOCCUPANCY: 140, status: 'OPEN', STATUS: 'OPEN', lat: 13.0784, lng: 77.6048, LATITUDE: 13.0784, LONGITUDE: 77.6048, location: 'Jakkur Aerodrome Sector' }
   ],
   warehouses: [
-    { WAREHOUSEID: 1001, WAREHOUSENAME: 'Hebbal Central Disaster Reserve Depot', CAPACITY: 10000, STATUS: 'ACTIVE', LATITUDE: 13.0358, LONGITUDE: 77.5970 },
-    { WAREHOUSEID: 1002, WAREHOUSENAME: 'Manyata Emergency Logistics Vault', CAPACITY: 8000, STATUS: 'ACTIVE', LATITUDE: 13.0475, LONGITUDE: 77.6200 }
+    { id: 1001, WAREHOUSEID: 1001, title: 'Hebbal Central Disaster Reserve Depot', WAREHOUSENAME: 'Hebbal Central Disaster Reserve Depot', capacity: 10000, CAPACITY: 10000, status: 'ACTIVE', STATUS: 'ACTIVE', lat: 13.0358, lng: 77.5970, LATITUDE: 13.0358, LONGITUDE: 77.5970, location: 'Hebbal Logistics Hub' },
+    { id: 1002, WAREHOUSEID: 1002, title: 'Manyata Emergency Logistics Vault', WAREHOUSENAME: 'Manyata Emergency Logistics Vault', capacity: 8000, CAPACITY: 8000, status: 'ACTIVE', STATUS: 'ACTIVE', lat: 13.0475, lng: 77.6200, LATITUDE: 13.0475, LONGITUDE: 77.6200, location: 'Nagawara Ring Road' }
   ],
   responders: [
-    { RESPONDERID: 1001, TEAMNAME: 'NDRF 10th Bn Alpha Squad', STATUS: 'DEPLOYED', LATITUDE: 13.0358, LONGITUDE: 77.5970 },
-    { RESPONDERID: 1002, TEAMNAME: 'EMS Trauma Response Unit 1', STATUS: 'DEPLOYED', LATITUDE: 13.0475, LONGITUDE: 77.6200 }
+    { id: 1001, RESPONDERID: 1001, title: 'NDRF 10th Bn Alpha Squad', TEAMNAME: 'NDRF 10th Bn Alpha Squad', specialization: 'Search & Rescue', status: 'DEPLOYED', STATUS: 'DEPLOYED', lat: 13.0358, lng: 77.5970, LATITUDE: 13.0358, LONGITUDE: 77.5970 },
+    { id: 1002, RESPONDERID: 1002, title: 'EMS Trauma Response Unit 1', TEAMNAME: 'EMS Trauma Response Unit 1', specialization: 'Emergency Medical', status: 'DEPLOYED', STATUS: 'DEPLOYED', lat: 13.0475, lng: 77.6200, LATITUDE: 13.0475, LONGITUDE: 77.6200 }
+  ],
+  hospitals: [
+    { id: 1, hospital_id: 1, title: 'Columbia Asia Emergency Trauma Center', hospital_name: 'Columbia Asia Emergency Trauma Center', lat: 13.0358, lng: 77.5970, LATITUDE: 13.0358, LONGITUDE: 77.5970, location: 'Hebbal Flyover Junction', status: 'OPEN' },
+    { id: 2, hospital_id: 2, title: 'Aster CMI Tertiary Care Hospital', hospital_name: 'Aster CMI Tertiary Care Hospital', lat: 13.0623, lng: 77.5871, LATITUDE: 13.0623, LONGITUDE: 77.5871, location: 'Sahakarnagar', status: 'OPEN' }
+  ],
+  zones: [
+    { id: 1001, name: 'Hebbal Flyover Inundation Zone', riskZone: 'CRITICAL', zone: 'Hebbal Ward 21', lat: 13.0358, lng: 77.5970, address: 'Outer Ring Road Hebbal' },
+    { id: 1002, name: 'Manyata Tech Park Sector', riskZone: 'HIGH', zone: 'Nagawara Ward 23', lat: 13.0475, lng: 77.6200, address: 'Nagawara Ring Road' },
+    { id: 1003, name: 'Yelahanka Lake Overflow Perimeter', riskZone: 'CRITICAL', zone: 'Yelahanka Ward 4', lat: 13.1007, lng: 77.5963, address: 'Kogilu Main Road' }
   ]
 };
 
 export const mockCitizenReports = [
   {
     report_id: 1,
+    id: 1,
     report_reference_id: 'RPT-20261009-HB001',
     disaster_type: 'Flood',
     severity_level: 'CRITICAL',
+    severity: 'CRITICAL',
+    location_id: 1001,
     location_name: 'Hebbal Flyover Junction',
     ward_name: 'Hebbal Ward 21',
     description: 'Outer Ring Road heavily submerged. Water reached 5 feet in apartment ground floors.',
@@ -325,6 +337,10 @@ export const mockCitizenReports = [
     urgent_medical_needed: true,
     evacuation_needed: true,
     status: 'ACTIVE',
+    lat: 13.0358,
+    lng: 77.5970,
+    latitude: 13.0358,
+    longitude: 77.5970,
     submitted_at: '2026-10-09T08:30:00Z',
     updates: [
       { update_id: 1, note: 'NDRF 10th Bn Alpha Squad deployed on scene with 2 rafts.', created_at: '2026-10-09T09:15:00Z', updated_by: 'Officer Col. Varma' },
@@ -333,9 +349,12 @@ export const mockCitizenReports = [
   },
   {
     report_id: 2,
+    id: 2,
     report_reference_id: 'RPT-20261009-MY002',
     disaster_type: 'Flash Flood',
     severity_level: 'HIGH',
+    severity: 'HIGH',
+    location_id: 1002,
     location_name: 'Manyata Embassy Business Park',
     ward_name: 'Nagawara Ward 23',
     description: 'Basement parking completely submerged. High voltage electrical transformer at risk.',
@@ -346,14 +365,21 @@ export const mockCitizenReports = [
     urgent_medical_needed: false,
     evacuation_needed: true,
     status: 'VERIFIED',
+    lat: 13.0475,
+    lng: 77.6200,
+    latitude: 13.0475,
+    longitude: 77.6200,
     submitted_at: '2026-10-09T09:00:00Z',
     updates: []
   },
   {
     report_id: 3,
+    id: 3,
     report_reference_id: 'RPT-20261009-YL003',
     disaster_type: 'Structural Collapse',
     severity_level: 'CRITICAL',
+    severity: 'CRITICAL',
+    location_id: 1003,
     location_name: 'Yelahanka Old Town Lake Basin',
     ward_name: 'Yelahanka Ward 4',
     description: 'Lake retaining wall breached causing rapid silt water surge into homes.',
@@ -364,6 +390,10 @@ export const mockCitizenReports = [
     urgent_medical_needed: true,
     evacuation_needed: true,
     status: 'SUBMITTED',
+    lat: 13.1007,
+    lng: 77.5963,
+    latitude: 13.1007,
+    longitude: 77.5963,
     submitted_at: '2026-10-09T10:30:00Z',
     updates: []
   }

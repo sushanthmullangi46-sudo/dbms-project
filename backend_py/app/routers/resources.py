@@ -166,3 +166,40 @@ def approve_and_allocate(
         "dispatch_references": [a.dispatch_reference for a in allocations]
     }
 
+@router.get("/responders")
+def list_responders_alias(
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.models.schema import ResponseTeam
+    teams = db.query(ResponseTeam).all()
+    results = [
+        {
+            "RESPONDERID": t.team_id,
+            "id": t.team_id,
+            "team_id": t.team_id,
+            "TEAMNAME": t.team_name,
+            "team_name": t.team_name,
+            "SPECIALIZATION": getattr(t, "specialization", "Search & Rescue"),
+            "specialization": getattr(t, "specialization", "Search & Rescue"),
+            "AVAILABILITYSTATUS": t.readiness_status,
+            "status": t.readiness_status,
+            "LEADNAME": t.leader_name or "Command Officer",
+            "CONTACTPHONE": getattr(t, "contact_phone", "+91-9845012345")
+        } for t in teams
+    ]
+    return {"success": True, "count": len(results), "responders": results}
+
+@router.get("/vehicles")
+def list_vehicles_alias(
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return {
+        "success": True,
+        "vehicles": [
+            {"id": 1001, "VEHICLEID": 1001, "VEHICLENAME": "Ambulance ALS-01", "REGISTRATIONNUMBER": "KA-04-G-1102", "VEHICLETYPE": "AMBULANCE", "STATUS": "AVAILABLE"},
+            {"id": 1002, "VEHICLEID": 1002, "VEHICLENAME": "NDRF Rescue Boat Zodiac-1", "REGISTRATIONNUMBER": "KA-04-BT-09", "VEHICLETYPE": "BOAT", "STATUS": "DEPLOYED"}
+        ]
+    }
+

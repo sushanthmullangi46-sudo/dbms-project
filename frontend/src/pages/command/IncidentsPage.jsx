@@ -192,35 +192,43 @@ export default function IncidentsPage() {
                     </td>
                   </tr>
                 ) : (
-                  incidents.map((inc) => (
-                    <tr key={inc.INCIDENTID} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-brand-400">#{inc.INCIDENTID}</td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-white">{inc.INCIDENTNAME}</div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-xs">{inc.DESCRIPTION}</div>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-slate-300">{inc.INCIDENTTYPE}</td>
-                      <td className="py-3 px-4"><Badge text={inc.SEVERITY} /></td>
-                      <td className="py-3 px-4 text-slate-300">
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                          <span>{inc.LOCATIONNAME}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4"><Badge text={inc.STATUS} /></td>
-                      <td className="py-3 px-4 font-mono font-semibold text-slate-200">{inc.REQUESTCOUNT || 0}</td>
-                      <td className="py-3 px-4 font-mono font-semibold text-slate-200">{inc.MISSIONCOUNT || 0}</td>
-                      <td className="py-3 px-4 text-right">
-                        <Link
-                          to={`/command/incidents/${inc.INCIDENTID}`}
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 hover:bg-brand-600 text-slate-200 hover:text-white transition-all border border-slate-700"
-                        >
-                          <Eye className="w-3 h-3" />
-                          <span>View Detail</span>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
+                  incidents.map((inc) => {
+                    const incId = inc.INCIDENTID || inc.disaster_id || inc.id;
+                    const incName = inc.INCIDENTNAME || inc.disaster_name || inc.name;
+                    const incType = inc.INCIDENTTYPE || inc.disaster_type || inc.type;
+                    const incSev = inc.SEVERITY || inc.severity_level || inc.severity;
+                    const incLoc = inc.LOCATIONNAME || inc.location_name || inc.location?.location_name || 'Bangalore Sector';
+                    const incStatus = inc.STATUS || inc.status;
+                    return (
+                      <tr key={incId} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-4 font-mono font-bold text-brand-400">#{incId}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-white">{incName}</div>
+                          <div className="text-[10px] text-slate-400 truncate max-w-xs">{inc.DESCRIPTION || inc.description}</div>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-slate-300">{incType}</td>
+                        <td className="py-3 px-4"><Badge text={incSev} /></td>
+                        <td className="py-3 px-4 text-slate-300">
+                          <div className="flex items-center space-x-1">
+                            <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span>{incLoc}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4"><Badge text={incStatus} /></td>
+                        <td className="py-3 px-4 font-mono font-semibold text-slate-200">{inc.REQUESTCOUNT || inc.requests?.length || 0}</td>
+                        <td className="py-3 px-4 font-mono font-semibold text-slate-200">{inc.MISSIONCOUNT || inc.missions?.length || 0}</td>
+                        <td className="py-3 px-4 text-right">
+                          <Link
+                            to={`/officer/incidents/${incId}`}
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 hover:bg-brand-600 text-slate-200 hover:text-white transition-all border border-slate-700"
+                          >
+                            <Eye className="w-3 h-3" />
+                            <span>View Detail</span>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

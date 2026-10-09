@@ -22,9 +22,9 @@ export default function AuditLogsPage() {
   }, []);
 
   const filteredLogs = logs.filter((l) =>
-    (l.DESCRIPTION || '').toLowerCase().includes(search.toLowerCase()) ||
-    (l.ACTIONTYPE || '').toLowerCase().includes(search.toLowerCase()) ||
-    (l.INCIDENTNAME || '').toLowerCase().includes(search.toLowerCase())
+    (l.DESCRIPTION || l.DETAILS || l.details || '').toLowerCase().includes(search.toLowerCase()) ||
+    (l.ACTIONTYPE || l.ACTION || l.action || '').toLowerCase().includes(search.toLowerCase()) ||
+    (l.INCIDENTNAME || l.TABLENAME || l.table_name || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -77,21 +77,21 @@ export default function AuditLogsPage() {
                   </tr>
                 ) : (
                   filteredLogs.map((l) => (
-                    <tr key={l.LOGID} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 font-bold text-brand-400">#{l.LOGID}</td>
+                    <tr key={l.LOGID || l.log_id || Math.random()} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-4 font-bold text-brand-400">#{l.LOGID || l.log_id}</td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700 text-[11px]">
-                          {l.ACTIONTYPE}
+                          {l.ACTIONTYPE || l.ACTION || l.action || 'EVENT'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-300 font-sans font-medium">{l.INCIDENTNAME}</td>
-                      <td className="py-3 px-4 text-slate-200 font-sans">{l.DESCRIPTION}</td>
+                      <td className="py-3 px-4 text-slate-300 font-sans font-medium">{l.INCIDENTNAME || l.TABLENAME || l.incident_code || 'System'}</td>
+                      <td className="py-3 px-4 text-slate-200 font-sans">{l.DESCRIPTION || l.DETAILS || l.details || l.reason || 'Operation logged'}</td>
                       <td className="py-3 px-4 text-slate-400 font-sans">
-                        {l.PERFORMEDBYNAME}
+                        {l.PERFORMEDBYNAME || l.USERNAME || l.username || 'System Administrator'}
                         {l.ROLENAME && <span className="text-[10px] text-brand-400 block font-mono">[{l.ROLENAME}]</span>}
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
-                        {new Date(l.TIMESTAMP).toLocaleString()}
+                        {new Date(l.TIMESTAMP || l.created_at || Date.now()).toLocaleString()}
                       </td>
                     </tr>
                   ))

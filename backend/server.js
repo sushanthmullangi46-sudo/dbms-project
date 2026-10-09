@@ -99,6 +99,20 @@ app.use('/api/v1', async (req, res, next) => {
     }
 });
 
+// Fallback /api/v1 routes served by Express
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/incidents', incidentRoutes);
+app.use('/api/v1/requests', requestRoutes);
+app.use('/api/v1/missions', missionRoutes);
+app.use('/api/v1/resources', resourceRoutes);
+app.use('/api/v1/responder', responderRoutes);
+app.use('/api/v1/provider', providerRoutes);
+app.use('/api/v1/inventory', inventoryRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/map', mapRoutes);
+app.use('/api/v1/verification', reportRoutes);
+
 const path = require('path');
 // Serve static frontend build if present
 const frontendDist = path.join(__dirname, '../frontend/dist');

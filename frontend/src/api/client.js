@@ -79,11 +79,64 @@ function handleFallback(url, method, data) {
 
   // Verification Queue
   if (cleanUrl.includes('/verification/queue')) {
-    const queue = [...mockCitizenReports];
-    queue.success = true;
-    queue.queue = queue;
-    queue.count = queue.length;
-    return queue;
+    const queue = mockCitizenReports.filter(r => ['SUBMITTED', 'AWAITING_INFORMATION'].includes(r.status));
+    return {
+      success: true,
+      count: queue.length,
+      queue,
+      reports: queue
+    };
+  }
+
+  // Verification Actions
+  if (cleanUrl.includes('/verification/verify') || (cleanUrl.includes('/verification') && data?.action === 'VERIFY')) {
+    const targetId = Number(data?.report_id || cleanUrl.match(/\/verification\/(\d+)/)?.[1]);
+    const rpt = mockCitizenReports.find(x => x.report_id === targetId || x.id === targetId);
+    if (rpt) {
+      rpt.status = 'VERIFIED';
+      rpt.verified_at = new Date().toISOString();
+      try {
+        localStorage.setItem('udr_citizen_reports', JSON.stringify(mockCitizenReports));
+      } catch (e) {}
+    }
+    return { success: true, message: 'Report officially VERIFIED in Oracle DB!' };
+  }
+
+  if (cleanUrl.includes('/verification/reject')) {
+    const targetId = Number(data?.report_id || cleanUrl.match(/\/verification\/(\d+)/)?.[1]);
+    const rpt = mockCitizenReports.find(x => x.report_id === targetId || x.id === targetId);
+    if (rpt) {
+      rpt.status = 'REJECTED';
+      rpt.rejection_reason = data?.reason || 'Unsubstantiated alert';
+      try {
+        localStorage.setItem('udr_citizen_reports', JSON.stringify(mockCitizenReports));
+      } catch (e) {}
+    }
+    return { success: true, message: 'Report REJECTED and justification recorded in audit log.' };
+  }
+
+  if (cleanUrl.includes('/verification/request-info')) {
+    const targetId = Number(data?.report_id || cleanUrl.match(/\/verification\/(\d+)/)?.[1]);
+    const rpt = mockCitizenReports.find(x => x.report_id === targetId || x.id === targetId);
+    if (rpt) {
+      rpt.status = 'AWAITING_INFORMATION';
+      try {
+        localStorage.setItem('udr_citizen_reports', JSON.stringify(mockCitizenReports));
+      } catch (e) {}
+    }
+    return { success: true, message: 'Report moved to AWAITING_INFORMATION.' };
+  }
+
+  if (cleanUrl.includes('/verification/merge')) {
+    const targetId = Number(data?.report_id);
+    const rpt = mockCitizenReports.find(x => x.report_id === targetId || x.id === targetId);
+    if (rpt) {
+      rpt.status = 'LINKED_DUPLICATE';
+      try {
+        localStorage.setItem('udr_citizen_reports', JSON.stringify(mockCitizenReports));
+      } catch (e) {}
+    }
+    return { success: true, message: 'Duplicate report merged into active incident.' };
   }
 
   if (cleanUrl.includes('/verification')) {
@@ -119,7 +172,14 @@ function handleFallback(url, method, data) {
   if (cleanUrl.includes('/map/markers')) {
     return {
       success: true,
+      markers: {
+        ...mockMapMarkers,
+        reports: mockCitizenReports,
+        citizenReports: mockCitizenReports,
+        hospitals: mockHospitals
+      },
       ...mockMapMarkers,
+      reports: mockCitizenReports,
       locations: mockMapMarkers.incidents
     };
   }
@@ -237,31 +297,134 @@ function handleFallback(url, method, data) {
     };
   }
 
-  // Citizen Reports & Incident Reports
+  // Citizen Reports, Updates & Assistance Requests
   if (cleanUrl.includes('/reports')) {
+    // 1. Assistance Request on Report
+    if (cleanUrl.includes('/assistance-request')) {
+      const idMatch = cleanUrl.match(/\/reports\/(\d+)\/assistance-request/);
+      const repId = idMatch ? Number(idMatch[1]) : 1;
+      const rep = mockCitizenReports.find(x => x.report_id === repId || x.id === repId);
+      if (rep) {
+        if (!rep.updates) rep.updates = [];
+        rep.updates.push({
+          update_id: Date.now(),
+          note: `[CITIZEN ASSISTANCE REQUEST: ${data?.request_type || 'GENERAL'}] For ${data?.quantity_or_people || 1} people. Notes: ${data?.notes || 'None'}`,
+          created_at: new Date().toISOString(),
+          updated_by: 'Citizen Reporter'
+        });
+        try {
+          localStorage.setItem('udr_citizen_reports', JSON.stringify(mockCitizenReports));
+        } catch (e) {}
+      }
+      return { success: true, message: 'Assistance request registered with Command Center' };
+    }
+
+    // 2. Supplemental Updates
+    if (cleanUrl.includes('/updates')) {
+      const idMatch = cleanUrl.match(/\/reports\/(\d+)\/updates/);
+      const repId = idMatch ? Number(idMatch[1]) : 1;
+      const rep = mockCitizenReports.find(x => x.report_id === repId || x.id === repId);
+      if (rep) {
+        if (!rep.updates) rep.updates = [];
+        rep.updates.push({
+          update_id: Date.now(),
+          note: data?.update_text || data?.message || data?.note || 'Supplementary update',
+          created_at: new Date().toISOString(),
+          updated_by: 'Citizen'
+        });
+        try {
+          localStorage.setItem('udr_citizen_reports', JSON.stringify(mockCitizenReports));
+        } catch (e) {}
+      }
+      return { success: true, message: 'Supplementary information added to disaster log!' };
+    }
+
+    // 3. New Report Submission (POST)
+    if (method === 'post' || (data && (data.disaster_type || data.location_id))) {
+      const matchedLoc = mockLocations.find(l => l.location_id === Number(data.location_id)) || mockLocations[0];
+      const newId = Date.now();
+      const refSuffix = Math.floor(Math.random() * 900 + 100);
+      const newReport = {
+        report_id: newId,
+        id: newId,
+        report_reference_id: `RPT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-BN${refSuffix}`,
+        disaster_type: data.disaster_type || 'Flood',
+        severity_level: Number(data.trapped_persons || 0) > 0 || data.urgent_medical_needed ? 'CRITICAL' : Number(data.injuries_reported || 0) > 0 ? 'HIGH' : 'MODERATE',
+        severity: Number(data.trapped_persons || 0) > 0 || data.urgent_medical_needed ? 'CRITICAL' : Number(data.injuries_reported || 0) > 0 ? 'HIGH' : 'MODERATE',
+        location_id: Number(data.location_id || matchedLoc.location_id),
+        location_name: matchedLoc.location_name,
+        ward_name: matchedLoc.ward_name,
+        description: data.description || 'Emergency incident reported by citizen',
+        people_affected: Number(data.people_affected || 1),
+        injuries_reported: Number(data.injuries_reported || 0),
+        missing_persons: Number(data.missing_persons || 0),
+        trapped_persons: Number(data.trapped_persons || 0),
+        urgent_medical_needed: Boolean(data.urgent_medical_needed),
+        evacuation_needed: Boolean(data.evacuation_needed),
+        status: 'SUBMITTED',
+        lat: matchedLoc.latitude,
+        lng: matchedLoc.longitude,
+        latitude: matchedLoc.latitude,
+        longitude: matchedLoc.longitude,
+        submitted_at: new Date().toISOString(),
+        updates: []
+      };
+
+      mockCitizenReports.unshift(newReport);
+      try {
+        localStorage.setItem('udr_citizen_reports', JSON.stringify(mockCitizenReports));
+      } catch (e) {}
+
+      return {
+        success: true,
+        message: 'Stage 1 Complete: Emergency report logged in Oracle database!',
+        report_id: newReport.report_id,
+        report_reference_id: newReport.report_reference_id,
+        status: 'SUBMITTED',
+        ...newReport
+      };
+    }
+
+    // 4. Single Report Details (GET)
     const idMatch = cleanUrl.match(/\/reports\/(\d+)/);
     if (idMatch) {
-      const rep = mockCitizenReports.find(x => x.report_id === Number(idMatch[1])) || mockCitizenReports[0];
+      const rep = mockCitizenReports.find(x => x.report_id === Number(idMatch[1]) || x.id === Number(idMatch[1])) || mockCitizenReports[0];
       return { success: true, report: rep, ...rep };
     }
+
+    // 5. List Reports (GET)
     const reps = [...mockCitizenReports];
     reps.success = true;
     reps.reports = reps;
     reps.count = reps.length;
-    reps.data = [
-      { INCIDENT: 'Bangalore North Flood', EVACUEES: 125, RESCUE_TIME: '18 mins', STATUS: 'ACTIVE' },
-      { INCIDENT: 'Manyata Basement Flooding', EVACUEES: 42, RESCUE_TIME: '24 mins', STATUS: 'ACTIVE' },
-      { INCIDENT: 'Yelahanka Lake Breach', EVACUEES: 210, RESCUE_TIME: '15 mins', STATUS: 'CRITICAL' }
-    ];
-    reps.reportName = 'Incident Response Matrix';
+    reps.data = reps;
     return reps;
   }
 
-  // Responders
-  if (cleanUrl.includes('/responders')) {
+  // Responders & Tactical Units
+  if (cleanUrl.includes('/resources/responders') || cleanUrl.includes('/responders')) {
     return {
       success: true,
-      responders: mockMapMarkers.responders
+      responders: mockMapMarkers.responders.map(r => ({
+        ...r,
+        RESPONDERID: r.id || r.RESPONDERID,
+        TEAMNAME: r.title || r.TEAMNAME,
+        SPECIALIZATION: r.specialization || 'Search & Rescue',
+        AVAILABILITYSTATUS: r.status || 'AVAILABLE',
+        LEADNAME: 'Capt. Arvind Rao',
+        CONTACTPHONE: '+91-9845012345'
+      }))
+    };
+  }
+
+  // Vehicles
+  if (cleanUrl.includes('/resources/vehicles') || cleanUrl.includes('/vehicles')) {
+    return {
+      success: true,
+      vehicles: [
+        { id: 1001, VEHICLEID: 1001, VEHICLENAME: 'Ambulance ALS-01', REGISTRATIONNUMBER: 'KA-04-G-1102', VEHICLETYPE: 'AMBULANCE', STATUS: 'AVAILABLE' },
+        { id: 1002, VEHICLEID: 1002, VEHICLENAME: 'NDRF Rescue Boat Zodiac-1', REGISTRATIONNUMBER: 'KA-04-BT-09', VEHICLETYPE: 'BOAT', STATUS: 'DEPLOYED' }
+      ]
     };
   }
 
