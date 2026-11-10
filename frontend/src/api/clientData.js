@@ -28,6 +28,14 @@ export const mockUsers = {
     email: 'coordinator@udrrms.com',
     phone: '+91-9880334455'
   },
+  'rescue@udrrms.com': {
+    userId: 4,
+    roleId: 4,
+    roleName: 'FIELD_RESPONDER',
+    fullName: 'Rescue Team Lead (Alpha Squad)',
+    email: 'rescue@udrrms.com',
+    phone: '+91-9880445566'
+  },
   'admin@udrorp.com': {
     userId: 2,
     roleId: 2,

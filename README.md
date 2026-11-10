@@ -4,11 +4,15 @@
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI%200.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![Database](https://img.shields.io/badge/Database-Oracle%2021c%20(3NF)-F80000?logo=oracle&logoColor=white)](https://www.oracle.com/database/)
-[![Tests](https://img.shields.io/badge/Tests-14%2F14%20Passed%20(100%25)-brightgreen)](docs/TEST_RESULTS.md)
+[![Tests](https://img.shields.io/badge/Tests-27%2F27%20Passed%20(100%25)-brightgreen)](docs/TEST_RESULTS.md)
 
-> 🌐 **Permanent Live Application Link:**  
+> 🌐 **Permanent Live Application Link (Online Demo):**  
 > **[https://sushanthmullangi46-sudo.github.io/dbms-project/](https://sushanthmullangi46-sudo.github.io/dbms-project/)**  
-> *(Runs standalone 100% in-browser with zero network errors, featuring 1-click test logins for Citizen, Officer, and Coordinator personas.)*
+> *(Runs standalone with live disaster maps, reporting forms, triage workflows, and 1-click test logins for Citizen, Administrator, Rescue Team, and Coordinator roles.)*
+>
+> 💻 **All-in-One Local Output Link (Permanent Database Engine):**  
+> **[http://localhost:5000](http://localhost:5000)**  
+> *(Single unified gateway serving React UI, Persistent 27-Table Relational Database, and [Interactive Swagger Docs](http://localhost:5000/docs). Launch with `RUN_WEBSITE.bat` or `RUN_UDRRMS.bat`.)*
 
 An enterprise-grade, event-driven multi-agency disaster operations management system designed for urban emergency coordination. Built around a **strict 13-stage sequential response workflow** from initial citizen emergency reporting through incident verification, severity assessment, rescue squad dispatch, transactional inventory allocation, shelter placement, and audit-verified incident closure.
 
@@ -24,13 +28,14 @@ An enterprise-grade, event-driven multi-agency disaster operations management sy
 
 ---
 
-## 2. Three Main User Roles
+## 2. Core User Roles & Responsibilities
 
 | Role Persona | Target Credentials | Core Responsibilities |
 |---|---|---|
-| **Role 1: Citizen / Affected Person** (`CITIZEN`) | `citizen@udrrms.com`<br>`password123` | • Submit emergency incident reports with map coordinates.<br>• Input affected count, trapped individuals, and urgent medical needs.<br>• Receive unique Incident Reference ID (`RPT-...`).<br>• Real-time timeline tracking (`SUBMITTED` &rarr; `CLOSED`).<br>• Request rations, potable water, medical triage, or shelter places.<br>• Confirm assistance receipt or flag unresolved emergencies. |
-| **Role 2: Disaster Management Officer** (`DISASTER_OFFICER`) | `officer@udrrms.com`<br>`password123` | • Review incoming reports in the Verification Queue.<br>• Verify reports or reject with mandatory audit reasons.<br>• Merge duplicate citizen alerts into active operational incidents.<br>• Run explainable rule-based severity scoring (P1-P4) with authorized overrides.<br>• Deploy and track tactical rescue squads (`ASSIGNED` &rarr; `COMPLETED`).<br>• Enforce mandatory closure criteria matrix before marking `CLOSED`. |
-| **Role 3: Relief & Resource Coordinator** (`COORDINATOR`) | `coordinator@udrrms.com`<br>`password123` | • Manage multi-depot warehouse inventories (Hebbal, Manyata, Yelahanka).<br>• Review incident supply requests in the approval queue.<br>• Approve full/partial quantities and execute transactional stock reservations.<br>• Create transport convoy dispatches (`DSP-...`).<br>• Record delivery receipts with receiver identity and damaged quantity auditing.<br>• Monitor low-stock alerts and initiate replenishment orders. |
+| **Role A: Citizen / Affected Person** (`CITIZEN`) | `citizen@udrrms.com`<br>`password123` | • Submit emergency incident reports with map coordinates.<br>• Input affected count, trapped individuals, and urgent medical needs.<br>• Receive unique Incident Reference ID (`RPT-...`).<br>• Real-time timeline tracking (`SUBMITTED` &rarr; `CLOSED`).<br>• Request rations, potable water, medical triage, or shelter places.<br>• Confirm assistance receipt or flag unresolved emergencies. |
+| **Role B: Administrator / Chief Officer** (`DISASTER_OFFICER`) | `officer@udrrms.com`<br>`password123` | • Review incoming reports in the Verification Queue.<br>• Verify reports or reject with mandatory audit reasons.<br>• Merge duplicate citizen alerts into active operational incidents.<br>• Run explainable rule-based severity scoring (P1-P4) with authorized overrides.<br>• Deploy and track tactical rescue squads (`ASSIGNED` &rarr; `COMPLETED`).<br>• Enforce mandatory closure criteria matrix before marking `CLOSED`. |
+| **Role C: Rescue / Tactical Team** (`FIELD_RESPONDER`) | `rescue@udrrms.com`<br>`password123` | • View assigned tactical operations and disaster zones on interactive map.<br>• Accept missions and update live operation progress (`EN_ROUTE` &rarr; `ON_SCENE`).<br>• Request urgent supplies and equipment escalations.<br>• Submit field completion reports and mark rescue operations completed. |
+| **Support: Relief Coordinator** (`COORDINATOR`) | `coordinator@udrrms.com`<br>`password123` | • Manage multi-depot warehouse inventories (Hebbal, Manyata, Yelahanka).<br>• Review incident supply requests in the approval queue.<br>• Approve full/partial quantities and execute transactional stock reservations.<br>• Create transport convoy dispatches (`DSP-...`).<br>• Record delivery receipts with receiver identity and damaged quantity auditing. |
 
 ---
 
@@ -127,17 +132,16 @@ npm run dev
 
 ## 6. Running the Automated Test Suite
 
-To run all 14 automated test cases validating the 13 workflow stages and database constraints:
+To run all 27 automated test cases (validating the 13 workflow stages, database constraints, and all 12 mandatory persistence & synchronization tests):
 
 ```bash
-cd backend_py
-python -m unittest tests/test_workflow.py
+python -m pytest -o pythonpath=backend_py backend_py\tests -v
 ```
 
 Result:
 ```text
-Ran 14 tests in 0.428s
-OK (100% pass rate)
+======================= 27 passed in 8.44s (100% pass rate) =======================
+```
 ```
 
 ---
