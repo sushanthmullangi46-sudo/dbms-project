@@ -85,3 +85,4 @@ backend_py/tests/test_workflow.py::TestUDRRMSWorkflow::test_14_audit_event_gener
 | **TC-WF-12** | Workflow Validation | Incident closure audit checklist validation. | Attempt closure while rescue teams are still marked `ON_SCENE`. | HTTP 400 Bad Request: "Active missions must be completed". | Rejection verified; after missions completed, closure accepted. | **PASSED** |
 | **TC-WF-13** | Analytics Integration | Incident escalation updates operational analytics immediately. | Mark incident as escalated. | Analytics dashboard immediately reflects increased critical count. | `criticalIncidents` counter incremented in `/analytics/dashboard`. | **PASSED** |
 | **TC-WF-14** | Security / Audit | Immutable system audit log generation. | Execute verification, dispatch, and closure. | Audit log rows created with user ID, action, and timestamp. | 3 audit records verified in `AUDIT_LOGS` table. | **PASSED** |
+

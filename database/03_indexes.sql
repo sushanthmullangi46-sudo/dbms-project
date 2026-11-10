@@ -35,3 +35,4 @@ CREATE INDEX idx_delivery_alloc ON DELIVERIES(allocation_id);
 CREATE INDEX idx_audit_created ON AUDIT_LOGS(created_at);
 
 COMMIT;
+

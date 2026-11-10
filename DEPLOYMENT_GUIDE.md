@@ -176,3 +176,4 @@ gunzip -c /var/backups/udrrms/udrrms_backup_20261110.db.gz > /tmp/restore_test.d
 sqlite3 /tmp/restore_test.db "PRAGMA integrity_check;"
 # Output: ok
 ```
+

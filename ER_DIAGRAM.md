@@ -93,3 +93,4 @@ erDiagram
 3. **Composite Unique Constraints**: Junction tables enforce multi-column uniqueness:
    - `INVENTORY`: `UNIQUE(warehouse_id, resource_id)` prevents duplicate ledger entries for the same commodity at a single depot.
    - `USER_ACCOUNTS`: `UNIQUE(email)` guarantees distinct login credentials across the platform.
+

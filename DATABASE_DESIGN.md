@@ -227,3 +227,4 @@ def allocate_stock(db: Session, request_id: int, inventory_id: int, qty: int, us
         db.add(audit)
 ```
 If an unhandled exception or constraint violation occurs during any step, the transaction automatically rolls back, preventing negative inventory or orphaned allocation records.
+

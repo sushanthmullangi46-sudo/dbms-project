@@ -161,3 +161,4 @@ The Urban Disaster Response & Relief Coordination Platform (UDRRMS / UDR-ORP) is
 1. **Stateless Scalability**: Authentication uses signed JWT tokens, allowing multiple backend application workers to run behind load balancers without session affinity bottlenecks.
 2. **ACID Transaction Isolation**: Multi-record state transitions (such as stock reservations and mission completions) are wrapped inside atomic database transactions with immediate rollback upon constraint failure.
 3. **Data Loss Prevention**: Database persistence is validated across application restarts, browser reloads, and simulated computer reboots.
+

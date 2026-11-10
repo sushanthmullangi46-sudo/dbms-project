@@ -148,3 +148,4 @@ The platform maintains an immutable audit log (`AUDIT_LOGS`) recording every sta
 - `created_at`: High-precision UTC timestamp.
 
 There are no APIs, controllers, or database procedures that permit updating or deleting existing audit logs.
+

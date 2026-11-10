@@ -91,3 +91,4 @@ INSERT INTO USER_ACCOUNTS (user_id, role_id, full_name, email, phone, password_h
 VALUES (4, 4, 'Rescue Team Lead (Alpha Squad)', 'rescue@udrrms.com', '+91-9880445566', '$2b$12$jQjX8o/uL8sQW4yvj8Q9u.d5C3J9K4z3T7q4X8V6l1N5P2B9C8E7O', 1);
 
 COMMIT;
+

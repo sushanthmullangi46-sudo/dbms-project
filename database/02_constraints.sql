@@ -140,3 +140,4 @@ ALTER TABLE SHELTERS ADD CONSTRAINT chk_sh_occ CHECK (current_occupancy >= 0);
 ALTER TABLE SHELTERS ADD CONSTRAINT chk_sh_limit CHECK (current_occupancy <= capacity);
 
 COMMIT;
+

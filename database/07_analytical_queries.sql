@@ -213,3 +213,4 @@ LEFT JOIN RESOURCES r ON inv.resource_id = r.resource_id
 LEFT JOIN WAREHOUSES w ON inv.warehouse_id = w.warehouse_id
 LEFT JOIN DELIVERIES del ON ra.allocation_id = del.allocation_id
 ORDER BY dis.disaster_id DESC;
+
