@@ -72,3 +72,4 @@ Unauthorized access attempts return `HTTP 403 Forbidden` with a standardized sec
 ### 3.4 Audit Trail Immutability
 - **Implementation**: System audit records (`AUDIT_LOG`) are strictly append-only. There are no exposed endpoints or controllers that support updating or deleting existing audit entries.
 - **Risk Level**: **COMPLIANT**.
+

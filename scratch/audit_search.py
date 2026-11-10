@@ -34,3 +34,4 @@ for r in results[:40]:
     print(r)
 if len(results) > 40:
     print(f"... and {len(results) - 40} more matches")
+

@@ -148,11 +148,30 @@ Result:
 
 ## 7. Deliverables & Documentation Directory
 
-- **ER Diagram:** [`docs/ER_DIAGRAM_UDRRMS.md`](docs/ER_DIAGRAM_UDRRMS.md)
-- **Use-Case Diagram:** [`docs/USE_CASE_DIAGRAM.md`](docs/USE_CASE_DIAGRAM.md)
-- **Sequence Diagram:** [`docs/SEQUENCE_DIAGRAM.md`](docs/SEQUENCE_DIAGRAM.md)
-- **REST API Specs:** [`docs/API_DOCUMENTATION_UDRRMS.md`](docs/API_DOCUMENTATION_UDRRMS.md)
-- **Test Results Log:** [`docs/TEST_RESULTS.md`](docs/TEST_RESULTS.md)
-- **Oracle DDL Schema:** [`database/01_udrrms_oracle_schema.sql`](database/01_udrrms_oracle_schema.sql)
-- **Oracle Seed Data:** [`database/02_udrrms_oracle_seed_data.sql`](database/02_udrrms_oracle_seed_data.sql)
-- **Analytical SQL Queries:** [`database/03_analytical_queries.sql`](database/03_analytical_queries.sql)
+### Core System Documentation (Markdown):
+- **System Architecture:** [`SYSTEM_ARCHITECTURE.md`](SYSTEM_ARCHITECTURE.md)
+- **Database Design & 3NF Proof:** [`DATABASE_DESIGN.md`](DATABASE_DESIGN.md)
+- **ER Model & Data Dictionary:** [`ER_DIAGRAM.md`](ER_DIAGRAM.md)
+- **REST API Specifications:** [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md)
+- **Security & RBAC Architecture:** [`SECURITY_DOCUMENTATION.md`](SECURITY_DOCUMENTATION.md)
+- **Local Setup & Installation Guide:** [`SETUP_GUIDE.md`](SETUP_GUIDE.md)
+- **Production Deployment Guide:** [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md)
+- **Error Audit & Post-Mortem Report:** [`ERROR_AUDIT.md`](ERROR_AUDIT.md)
+- **Automated Test Results (27/27):** [`TEST_RESULTS.md`](TEST_RESULTS.md)
+- **System Validation Certification:** [`PROJECT_VALIDATION_REPORT.md`](PROJECT_VALIDATION_REPORT.md)
+
+### Academic Final Project Report Package (`FINAL_PROJECT_REPORT/`):
+- **Official PDF Report:** [`FINAL_PROJECT_REPORT/FINAL_PROJECT_REPORT.pdf`](FINAL_PROJECT_REPORT/FINAL_PROJECT_REPORT.pdf)
+- **Official Word DOCX Report:** [`FINAL_PROJECT_REPORT/FINAL_PROJECT_REPORT.docx`](FINAL_PROJECT_REPORT/FINAL_PROJECT_REPORT.docx)
+- **Comprehensive Markdown Report:** [`FINAL_PROJECT_REPORT/FINAL_PROJECT_REPORT.md`](FINAL_PROJECT_REPORT/FINAL_PROJECT_REPORT.md)
+- **System Architecture Diagram:** [`FINAL_PROJECT_REPORT/SYSTEM_ARCHITECTURE.png`](FINAL_PROJECT_REPORT/SYSTEM_ARCHITECTURE.png)
+- **3NF Entity-Relationship Diagram:** [`FINAL_PROJECT_REPORT/ER_DIAGRAM.png`](FINAL_PROJECT_REPORT/ER_DIAGRAM.png)
+- **Unified 4-Role Use Case Diagram:** [`FINAL_PROJECT_REPORT/USE_CASE_DIAGRAM.png`](FINAL_PROJECT_REPORT/USE_CASE_DIAGRAM.png)
+- **13-Stage Operational Workflow:** [`FINAL_PROJECT_REPORT/COMPLETE_WORKFLOW.png`](FINAL_PROJECT_REPORT/COMPLETE_WORKFLOW.png)
+- **Excel Test Cases Matrix:** [`FINAL_PROJECT_REPORT/TEST_CASES.xlsx`](FINAL_PROJECT_REPORT/TEST_CASES.xlsx)
+- **17 Live Authentic Chrome Screenshots:** [`FINAL_PROJECT_REPORT/SCREENSHOTS/`](FINAL_PROJECT_REPORT/SCREENSHOTS/)
+
+### Database Scripts:
+- **Oracle Enterprise 3NF Schema:** [`database/01_udrrms_oracle_schema.sql`](database/01_udrrms_oracle_schema.sql)
+- **Oracle Seed Master Dataset:** [`database/02_udrrms_oracle_seed_data.sql`](database/02_udrrms_oracle_seed_data.sql)
+- **Analytical SQL Queries (JOIN / GROUP BY):** [`database/03_analytical_queries.sql`](database/03_analytical_queries.sql)

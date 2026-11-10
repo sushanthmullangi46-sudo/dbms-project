@@ -139,6 +139,7 @@ The platform establishes distinct, role-based operational command loops for thre
 ### LIST OF FIGURES
 
 - **Figure 3.1**: Comprehensive 3-Tier Enterprise Architecture Diagram (`SYSTEM_ARCHITECTURE.png`)
+- **Figure 3.2**: Unified 4-Role Enterprise Use Case Diagram (`USE_CASE_DIAGRAM.png`)
 - **Figure 4.1**: 3NF Normalized Relational Entity-Relationship Diagram (`ER_DIAGRAM.png`)
 - **Figure 7.1**: 13-Stage End-to-End Operational Workflow Flowchart (`COMPLETE_WORKFLOW.png`)
 - **Figure 9.1**: User Authentication & Multi-Role Demo Switcher (`01_login_page.png`)
@@ -155,6 +156,9 @@ The platform establishes distinct, role-based operational command loops for thre
 - **Figure 9.12**: Tamper-Evident Audit Log & Notification Console (`12_notifications_audit.png`)
 - **Figure 9.13**: Final Operational Mission Closure Status (`13_final_operation_status.png`)
 - **Figure 9.14**: Persistent Relational Schema & Swagger OpenAPI Explorer (`14_database_records.png`)
+- **Figure 9.15**: Command Center Resources Ledger (`14_command_resources.png`)
+- **Figure 9.16**: Warehouse Inventory & Logistics Ledger (`15_command_inventory.png`)
+- **Figure 9.17**: Operational Analytics Charts (`16_officer_analytics.png`)
 
 ---
 
@@ -602,22 +606,39 @@ Mission completion view displaying debrief notes, casualty outcomes, and closed 
 *File: `FINAL_PROJECT_REPORT/SCREENSHOTS/14_database_records.png`*  
 Swagger OpenAPI explorer showing all REST endpoints and persistent 3NF relational data models.
 
+### Figure 9.15: Command Center Resources Ledger
+*File: `FINAL_PROJECT_REPORT/SCREENSHOTS/14_command_resources.png`*  
+Full multi-depot operational resource ledger showing real asset registration numbers (`AST-2026-0001` through `AST-2026-0007`), actual stock counts, equipment conditions, and designated staging depots.
+
+### Figure 9.16: Warehouse Inventory & Logistics Ledger
+*File: `FINAL_PROJECT_REPORT/SCREENSHOTS/15_command_inventory.png`*  
+Multi-warehouse disaster reserve depot management showing stock levels, reserved quantities, reorder thresholds, and transactional dispatch audit trails.
+
+### Figure 9.17: Operational Analytics Charts
+*File: `FINAL_PROJECT_REPORT/SCREENSHOTS/16_officer_analytics.png`*  
+Post-incident analytics featuring real database SQL aggregations for hazard category breakdown (Bar Chart), priority distributions (Pie Chart), and resource demand vs. fulfilled deliveries (Grouped Bar Chart).
+
 ---
 
 ## CHAPTER 10: ERROR ANALYSIS AND CORRECTIONS
 
-*(Refer to `ERROR_CORRECTION_REPORT.md` for complete post-mortem details.)*
+*(Refer to `ERROR_AUDIT.md` and `ERROR_CORRECTION_REPORT.md` for complete post-mortem details.)*
 
-### Summary of Corrected Defects
-1. **ERR-01 (UI Blue Screen)**: Resolved unhandled React exception during mission deployment by wrapping routes in an `ErrorBoundary` and implementing a dedicated deployment modal.
-2. **ERR-02 (Backend AttributeError)**: Replaced direct access to missing `.notes` attribute on `ResourceRequest` with defensive extraction (`getattr(r, "notes", None)`).
-3. **ERR-03 (Invalid Date Parsing)**: Implemented safe date formatting helper returning `'Pending / Active'` when timestamps are null or undefined.
-4. **ERR-04 (Non-Persistent DB Path)**: Enforced canonical absolute path resolution for `udrrms.db`, preventing disconnected duplicate databases.
-5. **ERR-05 (Proxy Socket Aborts)**: Sanitized hop-by-hop HTTP headers in Node Express gateway to ensure reliable proxy streaming to FastAPI.
-6. **ERR-06 (Missing Backend Import)**: Added missing `BaseModel` import in `deliveries.py`.
-7. **ERR-07 (Audit Service Alias)**: Added `log = log_audit` alias in `AuditService` for backward compatibility.
-8. **ERR-08 (GitHub Pages Deployment)**: Configured git worktree deployment to `gh-pages` branch, bypassing environment branch protection rules.
+### Summary of Corrected Defects (Full Lifecycle Audit)
+1. **ERR-01 (UI Blue Screen on Mission Deployment)**: Wrapped routes in `ErrorBoundary` and decoupled tactical modal state.
+2. **ERR-02 (Backend AttributeError in Resource Requests)**: Handled missing `.notes` attribute defensively using `getattr(r, "notes", None)`.
+3. **ERR-03 (Invalid Date Parsing Crashes)**: Implemented safe date formatting helper returning `'Pending / Active'` when timestamps are null or undefined.
+4. **ERR-04 (Non-Persistent DB Path Splitting)**: Enforced canonical absolute path resolution for `database/udrrms.db`.
+5. **ERR-05 (Node Express Proxy Socket Aborts)**: Sanitized hop-by-hop HTTP headers in Node Express gateway to ensure reliable proxy streaming to FastAPI.
+6. **ERR-06 (Missing Backend Import in Deliveries)**: Added missing `BaseModel` import in `deliveries.py`.
+7. **ERR-07 (Audit Service Alias)**: Added `log = log_audit` alias in `AuditService`.
+8. **ERR-08 (GitHub Pages Deployment)**: Configured worktree deployment pipeline directly to `gh-pages` branch.
 9. **ERR-09 (PowerShell Execution Policy)**: Standardized scripts to call `npm.cmd` explicitly across Windows environments.
+10. **ERR-10 (Map Property Undefined Error)**: Normalized collection envelopes with `Array.isArray()` guards and converted `Promise.all` to `Promise.allSettled`.
+11. **ERR-11 (Inventory Table Placeholder Values)**: Synchronized Oracle uppercase aliases (`RESOURCEID`, `REGISTRATIONNUMBER`) with FastAPI lowercase DTOs.
+12. **ERR-12 (Warehouse Inventory Zero Records)**: Corrected `ResourceAllocation.is_dispatched` attribute query to evaluate `allocation_status in ["DISPATCHED", "COMPLETED"]`.
+13. **ERR-13 (Empty Operational Analytics Charts)**: Added real SQL `GROUP BY` aggregations for hazard distributions, severity breakdowns, and demand vs fulfillment.
+14. **ERR-14 (Missing Dashboard Alias in main.py)**: Added `get_dashboard_alias` in `analytics.py` ensuring all 27 automated tests pass.
 
 ---
 

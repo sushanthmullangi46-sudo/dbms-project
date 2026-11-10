@@ -348,8 +348,137 @@ def generate_er_diagram():
     plt.close()
     print("ER_DIAGRAM.png generated successfully!")
 
+# -------------------------------------------------------------
+# 4. USE CASE DIAGRAM (4 Interconnected Roles)
+# -------------------------------------------------------------
+def generate_use_case_diagram():
+    fig, ax = plt.subplots(figsize=(16, 11), dpi=300)
+    ax.set_xlim(0, 16)
+    ax.set_ylim(0, 11)
+    ax.axis('off')
+
+    fig.patch.set_facecolor('#0f172a')
+    ax.set_facecolor('#0f172a')
+
+    # Title Box
+    title_box = patches.FancyBboxPatch((1, 9.8), 14, 0.9, boxstyle="round,pad=0.1", fc='#1e293b', ec='#38bdf8', lw=2)
+    ax.add_patch(title_box)
+    ax.text(8, 10.25, "UDRRMS: ENTERPRISE USE CASE MODEL (4 INTERCONNECTED ROLES)", 
+            color='#f8fafc', fontsize=15, fontweight='bold', ha='center', va='center')
+    ax.text(8, 9.95, "Comprehensive Role-Based Access Control & Unified Operational Life Cycle", 
+            color='#94a3b8', fontsize=10.5, ha='center', va='center')
+
+    # System Boundary Box
+    boundary = patches.FancyBboxPatch((3.8, 0.6), 8.4, 8.8, boxstyle="round,pad=0.15", fc='#1e293b', ec='#475569', lw=2)
+    ax.add_patch(boundary)
+    ax.text(8.0, 9.15, "UDRRMS Centralized Core Platform Boundary", color='#38bdf8', fontsize=12, fontweight='bold', ha='center')
+
+    # 4 Actors
+    actors = [
+        ("ROLE: CITIZEN", 1.8, 7.5, '#10b981', "Citizen User"),
+        ("ROLE: ADMINISTRATOR", 1.8, 2.5, '#f59e0b', "Disaster Officer"),
+        ("ROLE: RESCUE TEAM", 14.2, 7.5, '#ef4444', "Field Responder"),
+        ("ROLE: SUPPLIES TEAM", 14.2, 2.5, '#8b5cf6', "Logistics Officer")
+    ]
+
+    for title, x, y, col, sub in actors:
+        # Actor stick figure/box
+        box = patches.FancyBboxPatch((x - 1.4, y - 0.7), 2.8, 1.4, boxstyle="round,pad=0.1", fc='#0f172a', ec=col, lw=2)
+        ax.add_patch(box)
+        ax.text(x, y + 0.35, title, color='#f8fafc', fontsize=9.5, fontweight='bold', ha='center')
+        ax.text(x, y - 0.05, f"({sub})", color=col, fontsize=8.5, ha='center')
+        ax.text(x, y - 0.45, "Authenticated via JWT", color='#64748b', fontsize=7, ha='center')
+
+    # Use Cases (Ellipses)
+    use_cases = [
+        # Citizen use cases
+        ("UC-01: Register & Login", 5.6, 8.2, '#10b981', 1.8, 0.45),
+        ("UC-02: Submit Geocoded Report", 5.6, 7.1, '#10b981', 1.8, 0.45),
+        ("UC-03: Request Emergency Aid", 5.6, 6.0, '#10b981', 1.8, 0.45),
+        ("UC-04: Track Distress Status", 5.6, 4.9, '#10b981', 1.8, 0.45),
+
+        # Admin use cases
+        ("UC-05: Triage & Verify Reports", 8.0, 8.2, '#f59e0b', 1.8, 0.45),
+        ("UC-06: Assess Severity (P1-P4)", 8.0, 7.1, '#f59e0b', 1.8, 0.45),
+        ("UC-07: Mobilize Tactical Squads", 8.0, 6.0, '#f59e0b', 1.8, 0.45),
+        ("UC-08: Closure & Audit Trail", 8.0, 4.9, '#f59e0b', 1.8, 0.45),
+        ("UC-09: Live GIS Command Map", 8.0, 3.8, '#38bdf8', 1.8, 0.45),
+        ("UC-10: Multi-Module Analytics", 8.0, 2.7, '#38bdf8', 1.8, 0.45),
+
+        # Rescue Team use cases
+        ("UC-11: Accept / Reject Mission", 10.4, 8.2, '#ef4444', 1.8, 0.45),
+        ("UC-12: Field Progress Updates", 10.4, 7.1, '#ef4444', 1.8, 0.45),
+        ("UC-13: Request Incident Supplies", 10.4, 6.0, '#ef4444', 1.8, 0.45),
+        ("UC-14: Evacuee Check-In", 10.4, 4.9, '#ef4444', 1.8, 0.45),
+
+        # Supplies Team use cases
+        ("UC-15: Warehouse Inventory Check", 10.4, 3.8, '#8b5cf6', 1.8, 0.45),
+        ("UC-16: Atomic Stock Reservation", 10.4, 2.7, '#8b5cf6', 1.8, 0.45),
+        ("UC-17: Dispatch Manifest Order", 10.4, 1.6, '#8b5cf6', 1.8, 0.45),
+        ("UC-18: Delivery Confirmation", 8.0, 1.6, '#8b5cf6', 1.8, 0.45),
+    ]
+
+    for label, cx, cy, col, rx, ry in use_cases:
+        ellipse = patches.Ellipse((cx, cy), rx * 2, ry * 2, fc='#0f172a', ec=col, lw=1.5)
+        ax.add_patch(ellipse)
+        ax.text(cx, cy, label, color='#f8fafc', fontsize=7.5, fontweight='bold', ha='center', va='center')
+
+    # Association Lines
+    # Citizen -> UC-01, 02, 03, 04, 09
+    for target in [(4.7, 8.2), (4.7, 7.1), (4.7, 6.0), (4.7, 4.9)]:
+        ax.annotate('', xy=target, xytext=(3.2, 7.5),
+                    arrowprops=dict(arrowstyle="-", color='#10b981', lw=1.2))
+
+    # Admin -> UC-05, 06, 07, 08, 09, 10
+    for target in [(7.1, 8.2), (7.1, 7.1), (7.1, 6.0), (7.1, 4.9), (7.1, 3.8), (7.1, 2.7)]:
+        ax.annotate('', xy=target, xytext=(3.2, 2.5),
+                    arrowprops=dict(arrowstyle="-", color='#f59e0b', lw=1.2))
+
+    # Rescue Team -> UC-11, 12, 13, 14, 09
+    for target in [(11.3, 8.2), (11.3, 7.1), (11.3, 6.0), (11.3, 4.9)]:
+        ax.annotate('', xy=target, xytext=(12.8, 7.5),
+                    arrowprops=dict(arrowstyle="-", color='#ef4444', lw=1.2))
+
+    # Supplies Team -> UC-15, 16, 17, 18
+    for target in [(11.3, 3.8), (11.3, 2.7), (11.3, 1.6), (8.9, 1.6)]:
+        ax.annotate('', xy=target, xytext=(12.8, 2.5),
+                    arrowprops=dict(arrowstyle="-", color='#8b5cf6', lw=1.2))
+
+    # Inter-use case relationships (<<include>> / <<extend>>)
+    includes = [
+        # UC-02 (Submit report) -> UC-05 (Verify)
+        ((6.5, 7.1), (7.1, 8.2), "<<triggers>>"),
+        # UC-05 (Verify) -> UC-06 (Assess)
+        ((8.0, 7.75), (8.0, 7.55), "<<include>>"),
+        # UC-06 (Assess) -> UC-07 (Mobilize)
+        ((8.0, 6.65), (8.0, 6.45), "<<include>>"),
+        # UC-07 (Mobilize) -> UC-11 (Accept Mission)
+        ((8.9, 6.0), (9.5, 8.2), "<<notifies>>"),
+        # UC-13 (Request Supplies) -> UC-15 (Warehouse Check)
+        ((10.4, 5.55), (10.4, 4.25), "<<triggers>>"),
+        # UC-15 (Warehouse Check) -> UC-16 (Stock Reservation)
+        ((10.4, 3.35), (10.4, 3.15), "<<include>>"),
+        # UC-16 (Stock Reservation) -> UC-17 (Dispatch)
+        ((10.4, 2.25), (10.4, 2.05), "<<include>>"),
+        # UC-17 (Dispatch) -> UC-18 (Delivery Confirm)
+        ((9.5, 1.6), (8.9, 1.6), "<<completes>>")
+    ]
+
+    for p1, p2, txt in includes:
+        ax.annotate('', xy=p2, xytext=p1,
+                    arrowprops=dict(arrowstyle="->", color='#38bdf8', lw=1.2, linestyle=':'))
+        mx, my = (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2
+        ax.text(mx, my, txt, color='#38bdf8', fontsize=6.5, ha='center', backgroundcolor='#0f172a')
+
+    plt.tight_layout()
+    plt.savefig("FINAL_PROJECT_REPORT/USE_CASE_DIAGRAM.png", dpi=300, facecolor=fig.get_facecolor(), edgecolor='none')
+    plt.close()
+    print("USE_CASE_DIAGRAM.png generated successfully!")
+
 if __name__ == "__main__":
     generate_system_architecture()
     generate_workflow_diagram()
     generate_er_diagram()
+    generate_use_case_diagram()
+
 

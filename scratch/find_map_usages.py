@@ -8,3 +8,4 @@ for root, dirs, files in os.walk('frontend/src'):
                 c = fp.read()
                 if 'DisasterMap' in c:
                     print(f"Found DisasterMap in {p}")
+

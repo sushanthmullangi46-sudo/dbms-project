@@ -75,3 +75,4 @@ All measured endpoints respond well under the 100ms threshold for mission-critic
 ### 3.2 Optimization Recommendations for Scale
 1. **Dynamic Code Splitting**: Utilize `React.lazy()` and dynamic `import()` on heavy routes (such as Recharts in `OfficerAnalyticsPage` and Leaflet in `DisasterMap`) to split vendor chunks into smaller independent sub-bundles (< 200 kB).
 2. **Tile Caching**: For map-heavy field responder operations in low-connectivity areas, implement service worker offline caching for OpenStreetMap tile assets.
+

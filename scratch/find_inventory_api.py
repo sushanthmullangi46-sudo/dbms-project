@@ -10,3 +10,4 @@ for root, dirs, files in os.walk('.'):
                 c = fp.read()
                 if '/inventory' in c:
                     print(f"Found /inventory in {p}")
+

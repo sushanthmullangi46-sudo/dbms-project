@@ -296,6 +296,14 @@ def generate_docx():
         p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p_cap.runs[0].font.size = Pt(9.5)
         p_cap.runs[0].font.italic = True
+
+    if os.path.exists("FINAL_PROJECT_REPORT/USE_CASE_DIAGRAM.png"):
+        doc.add_paragraph()
+        doc.add_picture("FINAL_PROJECT_REPORT/USE_CASE_DIAGRAM.png", width=Inches(6.5))
+        p_cap = doc.add_paragraph("Figure 3.2: Enterprise 4-Role Use Case Diagram and Unified Operational Lifecycle")
+        p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_cap.runs[0].font.size = Pt(9.5)
+        p_cap.runs[0].font.italic = True
         
     doc.add_heading("3.2 Reverse Proxy Gateway & Port 5000 Unification", level=2)
     doc.add_paragraph(
@@ -482,7 +490,10 @@ def generate_docx():
         ("11_resource_management.png", "Figure 9.11: Warehouse & Resource Management", "Logistics interface for monitoring stock levels, managing supply requests, and authorizing allocations."),
         ("12_notifications_audit.png", "Figure 9.12: Audit Logs & Notification Console", "Tamper-evident audit log displaying chronological system events and role notifications."),
         ("13_final_operation_status.png", "Figure 9.13: Final Operation Status & Debrief", "Mission completion view displaying debrief summaries and closed operational statuses."),
-        ("14_database_records.png", "Figure 9.14: Persistent Database Schema & OpenAPI Explorer", "Swagger OpenAPI explorer detailing all REST endpoints and persistent 3NF relational models.")
+        ("14_database_records.png", "Figure 9.14: Persistent Database Schema & OpenAPI Explorer", "Swagger OpenAPI explorer detailing all REST endpoints and persistent 3NF relational models."),
+        ("14_command_resources.png", "Figure 9.15: Command Center Resources Ledger", "Multi-depot operational resource ledger showing real asset registration numbers (AST-2026-0001 to 0007), actual stock counts, equipment conditions, and designated staging depots."),
+        ("15_command_inventory.png", "Figure 9.16: Warehouse Inventory & Logistics Ledger", "Disaster reserve depot management showing stock levels, reserved quantities, reorder thresholds, and transactional dispatch audit trails."),
+        ("16_officer_analytics.png", "Figure 9.17: Operational Analytics Charts", "Post-incident analytics featuring real database SQL aggregations for hazard category breakdown, priority distribution, and resource demand vs. fulfilled deliveries.")
     ]
     
     for filename, fig_title, fig_desc in screenshots:
@@ -530,7 +541,12 @@ def generate_docx():
         ("ERR-06", "Backend Imports", "Missing BaseModel import in deliveries.py causing startup NameError", "Added explicit BaseModel import from pydantic in deliveries.py"),
         ("ERR-07", "Backend Audit", "AuditService.log() missing method alias", "Added log = log_audit alias in AuditService for backward compatibility"),
         ("ERR-08", "CI/CD Deployment", "GitHub Pages deployment blocked by environment branch protection", "Configured git worktree deployment directly to gh-pages branch"),
-        ("ERR-09", "PowerShell Scripting", "npm.ps1 script blocked by Windows execution policy", "Standardized terminal commands to invoke npm.cmd explicitly")
+        ("ERR-09", "PowerShell Scripting", "npm.ps1 script blocked by Windows execution policy", "Standardized terminal commands to invoke npm.cmd explicitly"),
+        ("ERR-10", "Frontend Collections", "TypeError: Cannot read properties of undefined (reading 'map')", "Guarded array mappings with Array.isArray and switched Promise.all to Promise.allSettled"),
+        ("ERR-11", "Data Contracts", "Inventory table displaying placeholder tokens '#', 'Lot Item', 'default'", "Synchronized Oracle uppercase view aliases with FastAPI lowercase DTO attributes"),
+        ("ERR-12", "Transactional Ledger", "Warehouse inventory showing 0 records due to is_dispatched AttributeError", "Fixed attribute query in inventory_ops.py to evaluate allocation_status string enum"),
+        ("ERR-13", "Analytics Aggregation", "Empty operational charts due to key mismatches and missing demand query", "Added real SQL GROUP BY queries and demand vs. fulfilled joins"),
+        ("ERR-14", "API Gateway Routing", "Top-level /dashboard route failing with AttributeError: get_dashboard_alias", "Added get_dashboard_alias in analytics router, ensuring all 27 automated tests pass")
     ]
     for eid, cat, rca, corr in defects:
         row_e = t_err.add_row().cells

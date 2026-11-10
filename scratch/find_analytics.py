@@ -10,3 +10,4 @@ for root, dirs, files in os.walk('.'):
                 c = fp.read()
                 if 'analytics' in c.lower():
                     print(f"Found 'analytics' in {p}")
+

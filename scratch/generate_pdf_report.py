@@ -297,6 +297,11 @@ def generate_pdf():
     if os.path.exists("FINAL_PROJECT_REPORT/SYSTEM_ARCHITECTURE.png"):
         story.append(PlatypusImage("FINAL_PROJECT_REPORT/SYSTEM_ARCHITECTURE.png", width=500, height=340))
         story.append(Paragraph("Figure 3.1: Layered System Architecture and Network Communication Flow", caption_style))
+        story.append(Spacer(1, 15))
+
+    if os.path.exists("FINAL_PROJECT_REPORT/USE_CASE_DIAGRAM.png"):
+        story.append(PlatypusImage("FINAL_PROJECT_REPORT/USE_CASE_DIAGRAM.png", width=500, height=340))
+        story.append(Paragraph("Figure 3.2: Enterprise 4-Role Use Case Diagram and Operational Lifecycle", caption_style))
         
     story.append(PageBreak())
     
@@ -409,7 +414,10 @@ def generate_pdf():
         ("11_resource_management.png", "Figure 9.11: Warehouse & Resource Management", "Logistics interface for monitoring stock levels, managing supply requests, and authorizing allocations."),
         ("12_notifications_audit.png", "Figure 9.12: Audit Logs & Notification Console", "Tamper-evident audit log displaying chronological system events and role notifications."),
         ("13_final_operation_status.png", "Figure 9.13: Final Operation Status & Debrief", "Mission completion view displaying debrief summaries and closed operational statuses."),
-        ("14_database_records.png", "Figure 9.14: Persistent Database Schema & OpenAPI Explorer", "Swagger OpenAPI explorer detailing all REST endpoints and persistent 3NF relational models.")
+        ("14_database_records.png", "Figure 9.14: Persistent Database Schema & OpenAPI Explorer", "Swagger OpenAPI explorer detailing all REST endpoints and persistent 3NF relational models."),
+        ("14_command_resources.png", "Figure 9.15: Command Center Resources Ledger", "Multi-depot operational resource ledger showing real asset registration numbers (AST-2026-0001 to 0007), actual stock counts, equipment conditions, and designated staging depots."),
+        ("15_command_inventory.png", "Figure 9.16: Warehouse Inventory & Logistics Ledger", "Disaster reserve depot management showing stock levels, reserved quantities, reorder thresholds, and transactional dispatch audit trails."),
+        ("16_officer_analytics.png", "Figure 9.17: Operational Analytics Charts", "Post-incident analytics featuring real database SQL aggregations for hazard category breakdown, priority distribution, and resource demand vs. fulfilled deliveries.")
     ]
     
     for filename, fig_title, fig_desc in screenshots:
@@ -428,9 +436,11 @@ def generate_pdf():
     story.append(Paragraph("CHAPTER 10: ERROR ANALYSIS AND CORRECTIONS", h1_style))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#1E3A8A"), spaceAfter=10))
     story.append(Paragraph(
-        "During testing, nine engineering defects were systematically identified and corrected across frontend, backend, "
+        "During comprehensive hardening and end-to-end verification, 14 engineering defects were systematically identified and corrected across frontend, backend, "
         "database, and CI/CD pipelines. Key resolutions included wrapping routes in a React ErrorBoundary to prevent blue-screen crashes (ERR-01), "
-        "correcting ORM attribute extraction on resource requests (ERR-02), and establishing canonical absolute database paths for physical persistence (ERR-04).",
+        "correcting ORM attribute extraction on resource requests (ERR-02), establishing canonical absolute database paths for physical persistence (ERR-04), "
+        "defending array mappings against undefined envelopes (ERR-10), synchronizing Oracle uppercase view aliases with FastAPI DTOs (ERR-11), "
+        "fixing the transactional inventory is_dispatched attribute query (ERR-12), and adding real SQL GROUP BY analytics aggregations (ERR-13).",
         body_style
     ))
     story.append(Spacer(1, 10))

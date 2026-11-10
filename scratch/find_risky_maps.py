@@ -16,3 +16,4 @@ for root, dirs, files in os.walk('frontend/src'):
                         end = content.find('\n', m.end())
                         line = content[start:end].strip()
                         print(f"{p}: {var_name} in: {line[:90]}")
+

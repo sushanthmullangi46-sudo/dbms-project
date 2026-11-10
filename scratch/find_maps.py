@@ -25,3 +25,4 @@ for p, idx, m, line in map_calls:
 print(f"Unguarded .map() calls: {len(unguarded)}")
 for p, idx, m, line in unguarded[:30]:
     print(f"{p}:{idx}: {m} in '{line[:80]}'")
+

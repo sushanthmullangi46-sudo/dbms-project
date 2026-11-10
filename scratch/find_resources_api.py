@@ -10,3 +10,4 @@ for root, dirs, files in os.walk('.'):
                 c = fp.read()
                 if '/resources' in c or 'api/resources' in c or 'get_resources' in c:
                     print(f"Found /resources in {p}")
+
