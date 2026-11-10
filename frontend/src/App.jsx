@@ -67,6 +67,9 @@ function ProtectedRoute({ allowedRoles, children }) {
     if (user.roleName === 'CITIZEN') {
       return <Navigate to="/citizen/dashboard" replace />;
     }
+    if (user.roleName === 'FIELD_RESPONDER' || user.roleName === 'RESCUE_TEAM') {
+      return <Navigate to="/responder/dashboard" replace />;
+    }
     if (user.roleName === 'COORDINATOR' || user.roleName === 'RESOURCE_PROVIDER') {
       return <Navigate to="/coordinator/dashboard" replace />;
     }
@@ -83,7 +86,7 @@ function RootRedirect() {
   if (loading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-slate-950">
-        <Spinner size="lg" text="Connecting to Oracle database..." />
+        <Spinner size="lg" text="Connecting to UDRRMS persistent database..." />
       </div>
     );
   }
@@ -94,6 +97,9 @@ function RootRedirect() {
 
   if (user.roleName === 'CITIZEN') {
     return <Navigate to="/citizen/dashboard" replace />;
+  }
+  if (user.roleName === 'FIELD_RESPONDER' || user.roleName === 'RESCUE_TEAM') {
+    return <Navigate to="/responder/dashboard" replace />;
   }
   if (user.roleName === 'COORDINATOR' || user.roleName === 'RESOURCE_PROVIDER') {
     return <Navigate to="/coordinator/dashboard" replace />;

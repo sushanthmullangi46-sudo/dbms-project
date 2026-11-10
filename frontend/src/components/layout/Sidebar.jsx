@@ -28,7 +28,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 export default function Sidebar() {
-  const { user, isCitizen, isOfficer, isCoordinator } = useAuth();
+  const { user, isCitizen, isOfficer, isCoordinator, isResponder } = useAuth();
 
   let navLinks = [];
 
@@ -40,6 +40,14 @@ export default function Sidebar() {
       { name: 'Request Assistance', path: '/citizen/assistance', icon: HeartHandshake },
       { name: 'Shelters & Hospitals', path: '/citizen/shelters', icon: Home }
     ];
+  } else if (isResponder) {
+    navLinks = [
+      { name: 'Responder Terminal', path: '/responder/dashboard', icon: LayoutDashboard },
+      { name: 'Tactical Missions', path: '/responder/missions', icon: Compass },
+      { name: 'Mission History', path: '/responder/history', icon: Clock },
+      { name: 'Disaster Map', path: '/officer/map', icon: Map },
+      { name: 'Emergency Requests', path: '/officer/requests', icon: Package }
+    ];
   } else if (isCoordinator) {
     navLinks = [
       { name: 'Logistics Command', path: '/coordinator/dashboard', icon: LayoutDashboard },
@@ -50,12 +58,16 @@ export default function Sidebar() {
       { name: 'Post-Incident Analytics', path: '/officer/analytics', icon: BarChart3 }
     ];
   } else {
-    // Default to Officer / Command Center
+    // Default to Officer / Administrator
     navLinks = [
       { name: 'Command Dashboard', path: '/officer/dashboard', icon: LayoutDashboard },
       { name: 'Verification Queue', path: '/officer/verification', icon: ShieldCheck },
       { name: 'Active Incidents', path: '/officer/incidents', icon: Flame },
       { name: 'Tactical Rescue Teams', path: '/officer/teams', icon: Compass },
+      { name: 'Tactical Missions', path: '/officer/missions', icon: Compass },
+      { name: 'Emergency Requests', path: '/officer/requests', icon: Package },
+      { name: 'Relief Resources', path: '/officer/resources', icon: Boxes },
+      { name: 'Inventory Management', path: '/officer/inventory', icon: Warehouse },
       { name: 'Disaster Operations Map', path: '/officer/map', icon: Map },
       { name: 'Closure Checklist', path: '/officer/closure', icon: CheckSquare },
       { name: 'Operational Analytics', path: '/officer/analytics', icon: BarChart3 },
@@ -99,8 +111,8 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center px-3 py-2.5 text-xs font-medium rounded-xl transition-all ${
                   isActive
-                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30 shadow-sm font-semibold'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                    ? 'bg-brand-600/20 text-brand-400 border border-brand-500/30 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                 }`
               }
             >
@@ -111,13 +123,15 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Database Badge */}
-      <div className="p-4 border-t border-slate-800 text-[11px] text-slate-400 bg-slate-950/40">
-        <div className="flex items-center space-x-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-          <span className="font-mono text-slate-200">Oracle Database 21c</span>
+      {/* Persistent DB Status Pill */}
+      <div className="p-4 border-t border-slate-800 bg-slate-950/40">
+        <div className="flex items-center space-x-2 text-[10px] font-mono text-slate-400">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-semibold text-slate-300">Persistent SQLite Engine</span>
         </div>
-        <p className="text-[10px] text-slate-500 mt-1">27 Normalized Tables (3NF) • FastAPI</p>
+        <div className="text-[9px] text-slate-500 mt-0.5">
+          27 Normalized Relational Tables (3NF)
+        </div>
       </div>
     </aside>
   );

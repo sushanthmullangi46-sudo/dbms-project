@@ -17,6 +17,44 @@ def seed_database(db: Session = None):
     try:
         # Check if already seeded
         if db.query(Role).count() > 0:
+            # Idempotently check and ensure all required roles and accounts exist
+            resp_role = db.query(Role).filter(Role.role_name == "FIELD_RESPONDER").first()
+            if not resp_role:
+                max_role_id = db.query(Role).count() + 1
+                resp_role = Role(role_id=max_role_id, role_name="FIELD_RESPONDER", description="Tactical rescue and emergency field team")
+                db.add(resp_role)
+                db.commit()
+
+            rescue_user = db.query(UserAccount).filter(UserAccount.email == "rescue@udrrms.com").first()
+            if not rescue_user:
+                pwd_hash = get_password_hash("password123")
+                max_u_id = max([u.user_id for u in db.query(UserAccount).all()] or [0]) + 1
+                rescue_user = UserAccount(
+                    user_id=max_u_id,
+                    role_id=resp_role.role_id,
+                    full_name="Capt. Arvind Rao (NDRF Water Rescue Lead)",
+                    email="rescue@udrrms.com",
+                    phone="+91-9845011111",
+                    password_hash=pwd_hash
+                )
+                db.add(rescue_user)
+                db.commit()
+
+            admin_user = db.query(UserAccount).filter(UserAccount.email == "admin@udrorp.com").first()
+            if not admin_user:
+                pwd_hash = get_password_hash("password123")
+                officer_role = db.query(Role).filter(Role.role_name == "DISASTER_OFFICER").first()
+                max_u_id = max([u.user_id for u in db.query(UserAccount).all()] or [0]) + 1
+                admin_user = UserAccount(
+                    user_id=max_u_id,
+                    role_id=officer_role.role_id if officer_role else 2,
+                    full_name="Director of Disaster Management (Admin)",
+                    email="admin@udrorp.com",
+                    phone="+91-9880000000",
+                    password_hash=pwd_hash
+                )
+                db.add(admin_user)
+                db.commit()
             return
 
         print("Seeding UDRRMS database with 27 tables and realistic disaster scenario...")
@@ -25,7 +63,8 @@ def seed_database(db: Session = None):
         roles = [
             Role(role_id=1, role_name="CITIZEN", description="Citizens and witnesses reporting disasters"),
             Role(role_id=2, role_name="DISASTER_OFFICER", description="Incident command & emergency operations officer"),
-            Role(role_id=3, role_name="COORDINATOR", description="Relief logistics and inventory coordinator")
+            Role(role_id=3, role_name="COORDINATOR", description="Relief logistics and inventory coordinator"),
+            Role(role_id=4, role_name="FIELD_RESPONDER", description="Tactical rescue and emergency field team")
         ]
         db.add_all(roles)
         db.commit()
@@ -47,7 +86,9 @@ def seed_database(db: Session = None):
             UserAccount(user_id=1, role_id=1, full_name="Aarav Sharma (Citizen)", email="citizen@udrrms.com", phone="+91-9880112233", password_hash=pwd_hash),
             UserAccount(user_id=2, role_id=2, full_name="Col. Rajesh Varma (Chief Officer)", email="officer@udrrms.com", phone="+91-9880223344", password_hash=pwd_hash),
             UserAccount(user_id=3, role_id=3, full_name="Dr. Suresh Hegde (Relief Coordinator)", email="coordinator@udrrms.com", phone="+91-9880334455", password_hash=pwd_hash),
-            UserAccount(user_id=4, role_id=1, full_name="Priya Nair (Witness)", email="priya@udrrms.com", phone="+91-9880445566", password_hash=pwd_hash)
+            UserAccount(user_id=4, role_id=1, full_name="Priya Nair (Witness)", email="priya@udrrms.com", phone="+91-9880445566", password_hash=pwd_hash),
+            UserAccount(user_id=5, role_id=4, full_name="Capt. Arvind Rao (NDRF Water Rescue Lead)", email="rescue@udrrms.com", phone="+91-9845011111", password_hash=pwd_hash),
+            UserAccount(user_id=6, role_id=2, full_name="Director of Disaster Management (Admin)", email="admin@udrorp.com", phone="+91-9880000000", password_hash=pwd_hash)
         ]
         db.add_all(users)
         db.commit()
@@ -99,67 +140,59 @@ def seed_database(db: Session = None):
         db.add_all(resources)
         db.commit()
 
-        # 8. WAREHOUSES & INVENTORY
-        wh1 = Warehouse(warehouse_id=1, warehouse_name="Hebbal Central Disaster Reserve Depot", location_id=1001, manager_name="Inspector R. Chettiar", capacity_pallets=10000)
-        wh2 = Warehouse(warehouse_id=2, warehouse_name="Manyata Emergency Logistics Vault", location_id=1002, manager_name="T. Sundaram", capacity_pallets=8000)
-        wh3 = Warehouse(warehouse_id=3, warehouse_name="Yelahanka North Relief Warehouse", location_id=1003, manager_name="Major B. Varma", capacity_pallets=12000)
-        db.add_all([wh1, wh2, wh3])
+        # 8. WAREHOUSES
+        warehouses = [
+            Warehouse(warehouse_id=1, warehouse_name="Hebbal Central Reserve Depot", location_id=1001, manager_name="Ravi Teja", capacity_pallets=4500),
+            Warehouse(warehouse_id=2, warehouse_name="Manyata Rapid Logistics Vault", location_id=1002, manager_name="Ananya Hegde", capacity_pallets=3200),
+            Warehouse(warehouse_id=3, warehouse_name="Yelahanka North Staging Depot", location_id=1003, manager_name="Kiran Somanna", capacity_pallets=2800)
+        ]
+        db.add_all(warehouses)
         db.commit()
 
+        # 9. INVENTORY BALANCES
         inventory_items = [
-            # Warehouse 1
-            Inventory(warehouse_id=1, resource_id=1, quantity_available=8, quantity_reserved=2, reorder_threshold=2),
-            Inventory(warehouse_id=1, resource_id=2, quantity_available=85, quantity_reserved=15, reorder_threshold=20),
-            Inventory(warehouse_id=1, resource_id=3, quantity_available=2500, quantity_reserved=500, reorder_threshold=300),
-            Inventory(warehouse_id=1, resource_id=4, quantity_available=4000, quantity_reserved=800, reorder_threshold=500),
-            Inventory(warehouse_id=1, resource_id=5, quantity_available=320, quantity_reserved=40, reorder_threshold=50),
-            Inventory(warehouse_id=1, resource_id=6, quantity_available=12, quantity_reserved=3, reorder_threshold=3),
-            Inventory(warehouse_id=1, resource_id=7, quantity_available=1800, quantity_reserved=200, reorder_threshold=250),
-            # Warehouse 2
-            Inventory(warehouse_id=2, resource_id=1, quantity_available=5, quantity_reserved=0, reorder_threshold=2),
-            Inventory(warehouse_id=2, resource_id=3, quantity_available=1800, quantity_reserved=200, reorder_threshold=250),
-            Inventory(warehouse_id=2, resource_id=4, quantity_available=3000, quantity_reserved=0, reorder_threshold=400),
-            # Warehouse 3
-            Inventory(warehouse_id=3, resource_id=1, quantity_available=10, quantity_reserved=0, reorder_threshold=3),
-            Inventory(warehouse_id=3, resource_id=6, quantity_available=15, quantity_reserved=0, reorder_threshold=4)
+            Inventory(warehouse_id=1, resource_id=1, quantity_available=6, quantity_reserved=0, reorder_threshold=2),
+            Inventory(warehouse_id=1, resource_id=2, quantity_available=85, quantity_reserved=0, reorder_threshold=20),
+            Inventory(warehouse_id=1, resource_id=3, quantity_available=2500, quantity_reserved=0, reorder_threshold=500),
+            Inventory(warehouse_id=1, resource_id=4, quantity_available=1800, quantity_reserved=0, reorder_threshold=400),
+            Inventory(warehouse_id=2, resource_id=3, quantity_available=1200, quantity_reserved=0, reorder_threshold=300),
+            Inventory(warehouse_id=2, resource_id=5, quantity_available=150, quantity_reserved=0, reorder_threshold=30),
+            Inventory(warehouse_id=2, resource_id=7, quantity_available=900, quantity_reserved=0, reorder_threshold=200),
+            Inventory(warehouse_id=3, resource_id=4, quantity_available=1100, quantity_reserved=0, reorder_threshold=250),
+            Inventory(warehouse_id=3, resource_id=6, quantity_available=8, quantity_reserved=0, reorder_threshold=2)
         ]
         db.add_all(inventory_items)
         db.commit()
 
-        # 9. SHELTERS
+        # 10. SHELTERS & HOSPITALS
         shelters = [
-            Shelter(shelter_id=1, shelter_name="Sahakarnagar Indoor Stadium Relief Shelter", location_id=1009, capacity=500, current_occupancy=185, status="OPEN"),
-            Shelter(shelter_id=2, shelter_name="Jakkur Government High School Camp", location_id=1004, capacity=300, current_occupancy=140, status="OPEN"),
-            Shelter(shelter_id=3, shelter_name="Vidyaranyapura Community Hall", location_id=1007, capacity=250, current_occupancy=65, status="OPEN"),
-            Shelter(shelter_id=4, shelter_name="RT Nagar BBMP Relief Shelter", location_id=1006, capacity=200, current_occupancy=195, status="FULL")
+            Shelter(shelter_id=1, location_id=1009, shelter_name="Sahakarnagar Indoor Stadium Camp", capacity=350, current_occupancy=45, status="OPEN", has_medical_unit=True, has_potable_water=True),
+            Shelter(shelter_id=2, location_id=1007, shelter_name="Vidyaranyapura Govt High School Shelter", capacity=200, current_occupancy=20, status="OPEN", has_medical_unit=True, has_potable_water=True)
         ]
         db.add_all(shelters)
-        db.commit()
 
-        # 10. HOSPITALS
         hospitals = [
-            Hospital(hospital_id=1, hospital_name="Columbia Asia Emergency Trauma Center", location_id=1001, total_icu_beds=35, available_icu_beds=12, total_general_beds=200, available_general_beds=60),
-            Hospital(hospital_id=2, hospital_name="Aster CMI Tertiary Care Hospital", location_id=1001, total_icu_beds=50, available_icu_beds=18, total_general_beds=300, available_general_beds=95),
-            Hospital(hospital_id=3, hospital_name="Yelahanka General Hospital Relief Wing", location_id=1003, total_icu_beds=20, available_icu_beds=4, total_general_beds=120, available_general_beds=22)
+            Hospital(hospital_id=1, location_id=1001, hospital_name="Columbia Asia Referral Hospital Hebbal", total_icu_beds=30, available_icu_beds=8, total_general_beds=180, available_general_beds=42, trauma_center_level="LEVEL_1"),
+            Hospital(hospital_id=2, location_id=1002, hospital_name="Aster CMI Hospital Sahakarnagar", total_icu_beds=40, available_icu_beds=12, total_general_beds=250, available_general_beds=65, trauma_center_level="LEVEL_1")
         ]
         db.add_all(hospitals)
         db.commit()
 
-        # 11. SAMPLE DISASTER REPORT & INCIDENT
+        # 11. BASELINE DISASTER REPORT & OPERATIONAL INCIDENT
         rep1 = DisasterReport(
             report_id=1,
             report_reference_id="RPT-20261009-HB001",
             reporter_user_id=1,
             location_id=1001,
             disaster_type="Flood",
-            description="Bellary Road and Outer Ring Road heavily submerged. Water reached 5 feet in apartment ground floors.",
-            people_affected=150,
-            injuries_reported=12,
-            missing_persons=2,
-            trapped_persons=18,
+            description="Severe storm drainage backflow under Hebbal flyover. Water level rising above 4 feet. Trapped commuters on service lane.",
+            people_affected=45,
+            injuries_reported=3,
+            missing_persons=0,
+            trapped_persons=12,
             urgent_medical_needed=True,
             evacuation_needed=True,
-            status="VERIFIED",
+            status="ACTIVE",
             submitted_at=datetime.utcnow(),
             verified_at=datetime.utcnow()
         )

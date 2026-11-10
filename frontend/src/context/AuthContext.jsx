@@ -87,7 +87,7 @@ export function AuthProvider({ children }) {
   const isCitizen = user?.roleName === 'CITIZEN';
   const isOfficer = user?.roleName === 'DISASTER_OFFICER' || user?.roleName === 'COMMAND_CENTER';
   const isCoordinator = user?.roleName === 'COORDINATOR' || user?.roleName === 'RESOURCE_PROVIDER';
-  const isResponder = user?.roleName === 'FIELD_RESPONDER';
+  const isResponder = user?.roleName === 'FIELD_RESPONDER' || user?.roleName === 'RESCUE_TEAM';
 
   return (
     <AuthContext.Provider value={{

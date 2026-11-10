@@ -4,13 +4,14 @@
   "description": "Urban Disaster Response & Resource Orchestration Platform Master Workspace",
   "private": true,
   "scripts": {
+    "start": "node backend/server.js",
+    "start:backend": "cd backend_py && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "start:frontend": "npm --prefix frontend run dev",
     "dev": "npm --prefix frontend run dev",
-    "dev:backend": "npm --prefix backend run dev",
+    "dev:backend": "cd backend_py && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
     "dev:frontend": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
     "preview": "npm --prefix frontend run preview",
-    "start": "npm --prefix backend start",
-    "start:backend": "npm --prefix backend start",
-    "start:frontend": "npm --prefix frontend run dev"
+    "test": "python -m pytest -o pythonpath=backend_py backend_py/tests"
   }
 }

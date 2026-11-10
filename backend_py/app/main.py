@@ -63,7 +63,8 @@ app.add_middleware(
 # Routers
 from app.routers import (
     auth, reports, verification, incidents, teams,
-    resources, deliveries, shelters, medical, analytics, map_nodes
+    resources, deliveries, shelters, medical, analytics, map_nodes,
+    missions, inventory_ops
 )
 
 app.include_router(auth.router, prefix=settings.API_V1_STR)
@@ -77,6 +78,8 @@ app.include_router(shelters.router, prefix=settings.API_V1_STR)
 app.include_router(medical.router, prefix=settings.API_V1_STR)
 app.include_router(analytics.router, prefix=settings.API_V1_STR)
 app.include_router(map_nodes.router, prefix=settings.API_V1_STR)
+app.include_router(missions.router, prefix=settings.API_V1_STR)
+app.include_router(inventory_ops.router, prefix=settings.API_V1_STR)
 
 @app.get(f"{settings.API_V1_STR}/dashboard", tags=["Operational Analytics & Post-Incident Intelligence"])
 def top_level_dashboard(

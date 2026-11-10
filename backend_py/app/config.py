@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 class Settings:
     PROJECT_NAME: str = "Urban Disaster Relief and Resource Management System (UDRRMS)"
@@ -18,7 +19,15 @@ class Settings:
     
     # Primary DB Target: Oracle. Development Fallback: SQLite
     USE_SQLITE_DEV: bool = os.getenv("USE_SQLITE_DEV", "true").lower() in ("true", "1", "yes")
-    SQLITE_URL: str = "sqlite:///./udrrms.db"
+    
+    BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
+    DB_FILE: Path = BASE_DIR / "database" / "udrrms.db"
+
+    @property
+    def SQLITE_URL(self) -> str:
+        db_path_str = os.getenv("DATABASE_FILE", str(self.DB_FILE))
+        os.makedirs(os.path.dirname(os.path.abspath(db_path_str)), exist_ok=True)
+        return f"sqlite:///{Path(db_path_str).as_posix()}"
 
     @property
     def DATABASE_URL(self) -> str:

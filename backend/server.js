@@ -1,30 +1,19 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const { spawn } = require('child_process');
 require('dotenv').config();
 
-const db = require('./config/database');
 const errorHandler = require('./middleware/errorMiddleware');
-
-// Route imports
-const authRoutes = require('./routes/authRoutes');
-const incidentRoutes = require('./routes/incidentRoutes');
-const requestRoutes = require('./routes/requestRoutes');
-const missionRoutes = require('./routes/missionRoutes');
-const resourceRoutes = require('./routes/resourceRoutes');
-const responderRoutes = require('./routes/responderRoutes');
-const providerRoutes = require('./routes/providerRoutes');
-const inventoryRoutes = require('./routes/inventoryRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const reportRoutes = require('./routes/reportRoutes');
-const mapRoutes = require('./routes/mapRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+let pyProcess = null;
 
 // Middleware
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
@@ -40,47 +29,85 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
     res.json({
         status: 'UP',
-        service: 'UDR-ORP Backend API',
+        service: 'UDR-ORP Unified Gateway Service',
+        database: 'Permanent SQLite Engine (27 Tables)',
         timestamp: new Date().toISOString()
     });
 });
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/incidents', incidentRoutes);
-app.use('/api/requests', requestRoutes);
-app.use('/api/missions', missionRoutes);
-app.use('/api/resources', resourceRoutes);
-app.use('/api/responder', responderRoutes);
-app.use('/api/provider', providerRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/map', mapRoutes);
-
-// Direct shortcut for audit logs as specified in requirements
-const ReportController = require('./controllers/reportController');
-const authenticateUser = require('./middleware/authMiddleware');
-app.get('/api/audit-logs', authenticateUser, ReportController.getAuditLogs);
-
-// Internal Service Forwarding: Forward /api/v1 requests to internal backend_py service using Vercel binding
-app.use('/api/v1', async (req, res, next) => {
+// Auto-spawn or connect to Python FastAPI Database Engine
+async function ensurePythonBackend() {
     const pythonBase = process.env.BACKEND_PY_URL || process.env.PYTHON_BACKEND_URL || 'http://127.0.0.1:8000';
     try {
-        const targetUrl = new URL(`/api/v1${req.url}`, pythonBase);
-        const headers = { ...req.headers };
-        delete headers.host;
+        const ping = await fetch(`${pythonBase}/health`, { signal: AbortSignal.timeout(1500) });
+        if (ping.ok) {
+            console.log(`[PYTHON ENGINE] Verified live backend on ${pythonBase}`);
+            return;
+        }
+    } catch (_) {}
+
+    console.log(`[PYTHON ENGINE] Spawning FastAPI database engine on port 8000...`);
+    const pyCwd = path.join(__dirname, '../backend_py');
+    pyProcess = spawn('python', ['-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000'], {
+        cwd: pyCwd,
+        stdio: 'inherit',
+        shell: true
+    });
+
+    for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 600));
+        try {
+            const check = await fetch(`${pythonBase}/health`, { signal: AbortSignal.timeout(1000) });
+            if (check.ok) {
+                console.log(`[PYTHON ENGINE] FastAPI database engine operational on ${pythonBase}!`);
+                break;
+            }
+        } catch (_) {}
+    }
+}
+
+// Proxy all /api and /api/v1 calls to the persistent FastAPI service
+const handleApiProxy = async (req, res, next) => {
+    const pythonBase = process.env.BACKEND_PY_URL || process.env.PYTHON_BACKEND_URL || 'http://127.0.0.1:8000';
+    try {
+        let subPath = req.originalUrl;
+        if (!subPath.startsWith('/api/v1') && subPath.startsWith('/api')) {
+            subPath = subPath.replace(/^\/api/, '/api/v1');
+        }
+
+        const targetUrl = new URL(subPath, pythonBase);
+        const forwardHeaders = {};
+        for (const [key, val] of Object.entries(req.headers)) {
+            const k = key.toLowerCase();
+            if (['host', 'content-length', 'expect', 'connection', 'transfer-encoding', 'keep-alive'].includes(k)) {
+                continue;
+            }
+            forwardHeaders[k] = val;
+        }
+        if (!forwardHeaders['content-type']) {
+            forwardHeaders['content-type'] = 'application/json';
+        }
+
+        let bodyPayload = null;
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+            if (typeof req.body === 'string') {
+                bodyPayload = req.body;
+            } else if (typeof req.body === 'object') {
+                const keys = Object.keys(req.body);
+                if (keys.length === 1 && keys[0].startsWith('{') && req.body[keys[0]] === '') {
+                    bodyPayload = keys[0];
+                } else if (keys.length > 0) {
+                    bodyPayload = JSON.stringify(req.body);
+                }
+            }
+        }
 
         const fetchOptions = {
             method: req.method,
-            headers: {
-                ...headers,
-                'Content-Type': req.headers['content-type'] || 'application/json'
-            }
+            headers: forwardHeaders
         };
-
-        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
-            fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        if (bodyPayload) {
+            fetchOptions.body = bodyPayload;
         }
 
         const pyRes = await fetch(targetUrl, fetchOptions);
@@ -94,33 +121,24 @@ app.use('/api/v1', async (req, res, next) => {
         const data = await pyRes.arrayBuffer();
         return res.send(Buffer.from(data));
     } catch (err) {
-        console.warn(`[PYTHON SERVICE BINDING] Error contacting internal service at ${pythonBase}:`, err.message);
-        return next();
+        console.error(`[API GATEWAY ERROR] Failed to forward request to ${pythonBase}:`, err);
+        return res.status(503).json({
+            success: false,
+            message: 'Database backend service is starting up. Please retry in a moment.',
+            detail: err.message
+        });
     }
-});
+};
 
-// Fallback /api/v1 routes served by Express
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/incidents', incidentRoutes);
-app.use('/api/v1/requests', requestRoutes);
-app.use('/api/v1/missions', missionRoutes);
-app.use('/api/v1/resources', resourceRoutes);
-app.use('/api/v1/responder', responderRoutes);
-app.use('/api/v1/provider', providerRoutes);
-app.use('/api/v1/inventory', inventoryRoutes);
-app.use('/api/v1/dashboard', dashboardRoutes);
-app.use('/api/v1/reports', reportRoutes);
-app.use('/api/v1/map', mapRoutes);
-app.use('/api/v1/verification', reportRoutes);
+app.use(['/api', '/docs', '/openapi.json', '/redoc'], handleApiProxy);
 
-const path = require('path');
 // Serve static frontend build if present
 const frontendDist = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));
 
 // SPA Wildcard Route: send index.html for any frontend navigation
 app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+    if (req.path.startsWith('/api') || req.path.startsWith('/health') || req.path.startsWith('/docs') || req.path.startsWith('/openapi.json') || req.path.startsWith('/redoc')) {
         return next();
     }
     res.sendFile(path.join(frontendDist, 'index.html'), (err) => {
@@ -133,25 +151,17 @@ app.get('*', (req, res, next) => {
 // Centralized error handler
 app.use(errorHandler);
 
-// Server startup with Database Verification
+// Server startup
 async function startServer() {
     try {
         console.log('====================================================');
         console.log('URBAN DISASTER RESPONSE & RESOURCE ORCHESTRATION PLATFORM');
-        console.log('Short Name: UDR-ORP Backend Service');
+        console.log('Short Name: UDR-ORP Unified Gateway Service');
+        console.log('Database: Permanent Relational SQLite (database/udrrms.db)');
         console.log('====================================================');
 
-        // Test connection pool
-        try {
-            await db.initializePool();
-            const testRes = await db.execute('SELECT 1 AS HEALTH, SYSDATE FROM DUAL');
-            console.log('[ORACLE DB] Verified live connection:', testRes.rows);
-        } catch (dbErr) {
-            console.warn('[ORACLE DB WARNING] Connection failed during startup check:', dbErr.message);
-            console.warn('[ORACLE DB NOTE] Please run reset_oracle.bat to ensure Oracle XE is active and unlocked.');
-        }
+        await ensurePythonBackend();
 
-        // Dual-stack listen (binds to both IPv6 ::1 and IPv4 127.0.0.1)
         const server = app.listen(PORT, () => {
             console.log(`[HTTP SERVER] Running on:`);
             console.log(`  - Localhost: http://localhost:${PORT}`);
@@ -177,17 +187,18 @@ async function startServer() {
 }
 
 // Graceful Shutdown
-process.on('SIGINT', async () => {
-    console.log('\n[SHUTDOWN] Interrupted by user. Closing database pools...');
-    await db.closePool();
+function cleanExit() {
+    if (pyProcess) {
+        try {
+            console.log('\n[SHUTDOWN] Terminating Python database process...');
+            pyProcess.kill();
+        } catch (_) {}
+    }
     process.exit(0);
-});
+}
 
-process.on('SIGTERM', async () => {
-    console.log('\n[SHUTDOWN] Terminating process. Closing database pools...');
-    await db.closePool();
-    process.exit(0);
-});
+process.on('SIGINT', cleanExit);
+process.on('SIGTERM', cleanExit);
 
 if (require.main === module) {
     startServer();

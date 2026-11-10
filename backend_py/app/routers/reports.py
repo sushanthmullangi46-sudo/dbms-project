@@ -59,18 +59,35 @@ def list_reports(
     reports = query.order_by(DisasterReport.submitted_at.desc()).all()
     results = []
     for r in reports:
+        loc_name = r.location.location_name if r.location else "Unknown"
+        lat = r.location.latitude if r.location else 13.0358
+        lng = r.location.longitude if r.location else 77.5970
+        ward = r.location.ward_name if r.location else "North Sector"
+        sub_time = r.submitted_at.isoformat() if hasattr(r.submitted_at, 'isoformat') else str(r.submitted_at)
+
         results.append({
             "report_id": r.report_id,
+            "id": r.report_id,
             "report_reference_id": r.report_reference_id,
             "disaster_type": r.disaster_type,
             "description": r.description,
             "status": r.status,
             "people_affected": r.people_affected,
             "injuries": r.injuries_reported,
+            "injuries_reported": r.injuries_reported,
             "trapped": r.trapped_persons,
-            "location_name": r.location.location_name if r.location else "Unknown",
+            "trapped_persons": r.trapped_persons,
+            "missing_persons": r.missing_persons,
+            "urgent_medical_needed": r.urgent_medical_needed,
+            "evacuation_needed": r.evacuation_needed,
+            "location_name": loc_name,
+            "ward_name": ward,
+            "lat": lat,
+            "lng": lng,
+            "latitude": lat,
+            "longitude": lng,
             "risk_zone": r.location.risk_zone if r.location else "MODERATE",
-            "submitted_at": r.submitted_at,
+            "submitted_at": sub_time,
             "linked_incident_id": r.disaster_id
         })
     return {"success": True, "count": len(results), "reports": results}

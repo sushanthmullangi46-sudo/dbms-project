@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Lock, Mail, ArrowRight, UserCheck, ShieldCheck, Boxes, UserPlus, Phone, MapPin } from 'lucide-react';
+import { ShieldAlert, Lock, Mail, ArrowRight, UserCheck, ShieldCheck, Boxes, UserPlus, Phone, MapPin, Compass } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -37,6 +37,8 @@ export default function LoginPage() {
         navigate('/citizen/dashboard');
       } else if (user.roleName === 'DISASTER_OFFICER' || user.roleName === 'COMMAND_CENTER') {
         navigate('/officer/dashboard');
+      } else if (user.roleName === 'FIELD_RESPONDER' || user.roleName === 'RESCUE_TEAM') {
+        navigate('/responder/dashboard');
       } else if (user.roleName === 'COORDINATOR' || user.roleName === 'RESOURCE_PROVIDER') {
         navigate('/coordinator/dashboard');
       } else {
@@ -271,19 +273,19 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* Quick Demo Switcher - 3 Main Master Roles */}
+          {/* Quick Demo Switcher - Three Main User Roles */}
           <div className="mt-5 pt-4 border-t border-slate-800">
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2.5">
               Select Role Persona (1-Click Test Access)
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickLogin('citizen@udrrms.com')}
                 className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800 hover:border-emerald-500/50 transition-all group"
               >
                 <UserCheck className="w-4 h-4 text-emerald-400 mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-bold text-slate-200">Role 1: Citizen</span>
+                <span className="text-[11px] font-bold text-slate-200">A. Citizen</span>
                 <span className="text-[9px] text-slate-500 font-mono">Aarav Sharma</span>
               </button>
 
@@ -293,8 +295,18 @@ export default function LoginPage() {
                 className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800 hover:border-rose-500/50 transition-all group"
               >
                 <ShieldCheck className="w-4 h-4 text-rose-400 mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-bold text-slate-200">Role 2: Officer</span>
+                <span className="text-[11px] font-bold text-slate-200">B. Admin</span>
                 <span className="text-[9px] text-slate-500 font-mono">Col. Rajesh Varma</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('rescue@udrrms.com')}
+                className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800 hover:border-amber-500/50 transition-all group"
+              >
+                <Compass className="w-4 h-4 text-amber-400 mb-1 group-hover:scale-110 transition-transform" />
+                <span className="text-[11px] font-bold text-slate-200">C. Rescue Team</span>
+                <span className="text-[9px] text-slate-500 font-mono">Capt. Arvind Rao</span>
               </button>
 
               <button
@@ -303,7 +315,7 @@ export default function LoginPage() {
                 className="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800 hover:border-blue-500/50 transition-all group"
               >
                 <Boxes className="w-4 h-4 text-blue-400 mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-bold text-slate-200">Role 3: Logistics</span>
+                <span className="text-[11px] font-bold text-slate-200">Logistics</span>
                 <span className="text-[9px] text-slate-500 font-mono">Dr. Suresh Hegde</span>
               </button>
             </div>

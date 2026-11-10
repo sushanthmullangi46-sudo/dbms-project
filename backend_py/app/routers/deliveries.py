@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
 from app.database import get_db
 from app.models.schema import Delivery, DeliveryItem, ResourceAllocation, UserAccount
 from app.schemas.dtos import DeliveryDispatchCreate, DeliveryConfirmationRequest
@@ -64,6 +65,37 @@ def dispatch_delivery(
         "message": f"Delivery #{delivery.delivery_id} marked as DISPATCHED in transit.",
         "delivery_id": delivery.delivery_id,
         "status": delivery.delivery_status
+    }
+
+class DirectDeliveryConfirm(BaseModel):
+    delivery_id: Optional[int] = 1
+    received_by: Optional[str] = "Receiver"
+    quantity_received: Optional[int] = 0
+    quantity_damaged: Optional[int] = 0
+    proof_of_delivery: Optional[str] = None
+
+@router.post("/confirm")
+def confirm_delivery_direct(
+    body: DirectDeliveryConfirm,
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    del_id = body.delivery_id or 1
+    delivery = WorkflowService.confirm_delivery(
+        db=db,
+        delivery_id=del_id,
+        user=current_user,
+        quantity_received=body.quantity_received or 0,
+        quantity_damaged=body.quantity_damaged or 0,
+        receiver_name=body.received_by,
+        proof_note=body.proof_of_delivery
+    )
+    return {
+        "success": True,
+        "message": "Delivery confirmation stamped and inventory reconciled.",
+        "delivery_id": delivery.delivery_id,
+        "status": delivery.delivery_status,
+        "delivered_at": delivery.delivered_at
     }
 
 @router.post("/{delivery_id}/confirm")

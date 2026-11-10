@@ -9,10 +9,12 @@ class AuditService:
         entity_name: str,
         entity_id: str,
         action: str,
-        performed_by: int,
-        actor_name: str,
-        details: dict or str
+        performed_by: int = 1,
+        actor_name: str = "Operator",
+        details: dict or str = "",
+        actor_id: int = None
     ) -> AuditLog:
+        perf_by = actor_id or performed_by or 1
         if isinstance(details, dict):
             details_str = json.dumps(details)
         else:
@@ -22,7 +24,7 @@ class AuditService:
             entity_name=entity_name,
             entity_id=str(entity_id),
             action=action,
-            performed_by=performed_by,
+            performed_by=perf_by,
             actor_name=actor_name,
             details=details_str
         )
@@ -30,6 +32,8 @@ class AuditService:
         db.commit()
         db.refresh(audit)
         return audit
+
+    log = log_audit
 
     @staticmethod
     def log_workflow_event(
