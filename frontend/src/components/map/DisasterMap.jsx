@@ -129,23 +129,28 @@ export default function DisasterMap({ markers = {}, center = [13.05, 77.60], zoo
 
   // Safe normalized datasets
   const safeData = useMemo(() => {
-    const rawZones = markers?.zones || [];
-    const rawIncidents = markers?.incidents || [];
-    const rawReports = markers?.reports || markers?.citizenReports || [];
-    const rawRequests = markers?.requests || [];
-    const rawShelters = markers?.shelters || [];
-    const rawHospitals = markers?.hospitals || [];
-    const rawWarehouses = markers?.warehouses || [];
-    const rawResponders = markers?.responders || [];
-    const rawVehicles = markers?.vehicles || [];
+    const rawZones = Array.isArray(markers?.zones) ? markers.zones : [];
+    const rawIncidents = Array.isArray(markers?.incidents) 
+      ? markers.incidents 
+      : (Array.isArray(markers) ? markers : []);
+    const rawReports = Array.isArray(markers?.reports) 
+      ? markers.reports 
+      : (Array.isArray(markers?.citizenReports) ? markers.citizenReports : []);
+    const rawRequests = Array.isArray(markers?.requests) ? markers.requests : [];
+    const rawShelters = Array.isArray(markers?.shelters) ? markers.shelters : [];
+    const rawHospitals = Array.isArray(markers?.hospitals) ? markers.hospitals : [];
+    const rawWarehouses = Array.isArray(markers?.warehouses) ? markers.warehouses : [];
+    const rawResponders = Array.isArray(markers?.responders) ? markers.responders : [];
+    const rawVehicles = Array.isArray(markers?.vehicles) ? markers.vehicles : [];
 
     return {
       zones: rawZones.map(z => {
+        if (!z) return null;
         const lat = Number(z.lat ?? z.latitude ?? z.LATITUDE);
         const lng = Number(z.lng ?? z.longitude ?? z.LONGITUDE);
         if (isNaN(lat) || isNaN(lng)) return null;
         return {
-          id: z.id ?? z.LOCATIONID ?? z.location_id,
+          id: z.id ?? z.LOCATIONID ?? z.location_id ?? Math.floor(Math.random() * 1000),
           name: z.name ?? z.LOCATIONNAME ?? z.location_name ?? 'Municipal Sector',
           riskZone: (z.riskZone ?? z.RISKZONE ?? z.risk_zone ?? 'MODERATE').toUpperCase(),
           zone: z.zone ?? z.ZONE ?? z.ward_name ?? 'Urban Ward',

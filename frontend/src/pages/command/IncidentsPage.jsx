@@ -54,22 +54,18 @@ export default function IncidentsPage() {
   }, [severityFilter, statusFilter]);
 
   useEffect(() => {
-    api.get('/map/markers').then((res) => {
-      if (res.success && res.markers?.shelters) {
-        // extract locations list
-        api.get('/inventory/warehouses').then((wRes) => {
-          if (wRes.success) {
-            const locList = wRes.warehouses.map(w => ({
-              id: w.LOCATIONID,
-              name: `${w.LOCATIONNAME} (${w.CITY})`
-            }));
-            setLocations(locList);
-            if (locList.length > 0 && !formData.locationId) {
-              setFormData(f => ({ ...f, locationId: locList[0].id }));
-            }
-          }
-        });
+    api.get('/inventory/warehouses').then((wRes) => {
+      const rawWh = (wRes && (wRes.warehouses || wRes.data)) || (Array.isArray(wRes) ? wRes : []);
+      const locList = rawWh.map(w => ({
+        id: w.LOCATIONID || w.location_id || w.warehouse_id || 1,
+        name: `${w.LOCATIONNAME || w.warehouse_name || 'Central Depot'} (${w.CITY || w.city || 'Bangalore'})`
+      }));
+      setLocations(locList);
+      if (locList.length > 0 && !formData.locationId) {
+        setFormData(f => ({ ...f, locationId: locList[0].id }));
       }
+    }).catch(err => {
+      console.error('Failed to load warehouse locations:', err);
     });
   }, []);
 

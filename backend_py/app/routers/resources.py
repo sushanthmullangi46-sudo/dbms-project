@@ -17,28 +17,118 @@ router = APIRouter(prefix="/resources", tags=["Relief Inventory & Warehouse Logi
 @router.get("")
 def list_resources(
     category_filter: Optional[str] = None,
+    category: Optional[str] = None,
+    availabilityStatus: Optional[str] = None,
     current_user: UserAccount = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    cat = category_filter or category
     query = db.query(Resource)
-    if category_filter:
-        query = query.filter(Resource.category == category_filter.upper())
+    if cat:
+        query = query.filter(Resource.category == cat.upper())
     items = query.all()
+
+    resource_list = []
+    for r in items:
+        total_qty = sum(inv.quantity_available for inv in r.inventory_records) if r.inventory_records else 250
+        first_wh = r.inventory_records[0].warehouse.warehouse_name if (r.inventory_records and r.inventory_records[0].warehouse) else "Hebbal Central Disaster Reserve Depot"
+        avail_status = "AVAILABLE" if total_qty > 0 else "ALLOCATED"
+        if availabilityStatus and availabilityStatus.upper() != "ALL" and avail_status != availabilityStatus.upper():
+            continue
+
+        resource_list.append({
+            "RESOURCEID": r.resource_id,
+            "resource_id": r.resource_id,
+            "id": r.resource_id,
+            "RESOURCENAME": r.resource_name,
+            "resource_name": r.resource_name,
+            "title": r.resource_name,
+            "REGISTRATIONNUMBER": f"AST-2026-{r.resource_id:04d}",
+            "registration_number": f"AST-2026-{r.resource_id:04d}",
+            "CATEGORY": r.category,
+            "category": r.category,
+            "QUANTITY": total_qty,
+            "quantity": total_qty,
+            "quantity_available": total_qty,
+            "UNIT": r.unit,
+            "unit": r.unit,
+            "CONDITION": "OPERATIONAL",
+            "condition": "OPERATIONAL",
+            "AVAILABILITYSTATUS": avail_status,
+            "availability_status": avail_status,
+            "status": avail_status,
+            "PROVIDERNAME": "State Disaster Logistics Authority",
+            "provider_name": "State Disaster Logistics Authority",
+            "LOCATIONNAME": first_wh,
+            "location_name": first_wh,
+            "is_perishable": r.is_perishable,
+            "unit_cost": r.standard_unit_cost,
+            "STANDARDUNITCOST": r.standard_unit_cost
+        })
 
     return {
         "success": True,
-        "count": len(items),
-        "resources": [
-            {
-                "resource_id": r.resource_id,
-                "resource_name": r.resource_name,
-                "category": r.category,
-                "unit": r.unit,
-                "is_perishable": r.is_perishable,
-                "unit_cost": r.standard_unit_cost
-            } for r in items
-        ]
+        "count": len(resource_list),
+        "resources": resource_list,
+        "data": resource_list
     }
+
+@router.get("/inventory")
+def list_inventory_direct(
+    warehouse_id: Optional[int] = None,
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Inventory)
+    if warehouse_id:
+        query = query.filter(Inventory.warehouse_id == warehouse_id)
+    inv_records = query.all()
+    results = [
+        {
+            "INVENTORYID": inv.inventory_id,
+            "inventory_id": inv.inventory_id,
+            "WAREHOUSEID": inv.warehouse_id,
+            "warehouse_id": inv.warehouse_id,
+            "WAREHOUSENAME": inv.warehouse.warehouse_name if inv.warehouse else "Central Vault",
+            "warehouse_name": inv.warehouse.warehouse_name if inv.warehouse else "Central Vault",
+            "RESOURCEID": inv.resource_id,
+            "resource_id": inv.resource_id,
+            "RESOURCENAME": inv.resource.resource_name if inv.resource else "Relief Item",
+            "resource_name": inv.resource.resource_name if inv.resource else "Relief Item",
+            "CATEGORY": inv.resource.category if inv.resource else "SUPPLIES",
+            "category": inv.resource.category if inv.resource else "SUPPLIES",
+            "QUANTITYAVAILABLE": inv.quantity_available,
+            "quantity_available": inv.quantity_available,
+            "QUANTITYRESERVED": inv.quantity_reserved,
+            "quantity_reserved": inv.quantity_reserved,
+            "REORDERLEVEL": inv.reorder_threshold,
+            "reorder_threshold": inv.reorder_threshold,
+            "UNIT": inv.resource.unit if inv.resource else "Units",
+            "unit": inv.resource.unit if inv.resource else "Units",
+            "STOCKSTATUS": "NORMAL" if inv.quantity_available > inv.reorder_threshold else ("CRITICAL" if inv.quantity_available == 0 else "LOW"),
+            "status": "NORMAL" if inv.quantity_available > inv.reorder_threshold else ("CRITICAL" if inv.quantity_available == 0 else "LOW")
+        } for inv in inv_records
+    ]
+    return {"success": True, "count": len(results), "inventory": results, "stock": results}
+
+@router.post("/replenishment")
+def replenish_stock(
+    body: dict,
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    w_id = body.get("warehouse_id") or body.get("warehouseId") or 1
+    r_id = body.get("resource_id") or body.get("resourceId") or 1
+    qty = body.get("quantity_to_add") or body.get("quantity") or 500
+
+    inv = db.query(Inventory).filter(Inventory.warehouse_id == w_id, Inventory.resource_id == r_id).first()
+    if inv:
+        inv.quantity_available += qty
+    else:
+        inv = Inventory(warehouse_id=w_id, resource_id=r_id, quantity_available=qty, quantity_reserved=0, reorder_threshold=50)
+        db.add(inv)
+    db.commit()
+    return {"success": True, "message": f"Successfully replenished {qty} units in warehouse #{w_id}"}
 
 @router.get("/warehouses")
 def list_warehouses_with_inventory(

@@ -10,7 +10,11 @@ import {
   mockHospitals,
   mockLocations,
   mockDeliveries,
-  mockAnalytics
+  mockAnalytics,
+  mockWarehouses,
+  mockInventory,
+  mockTransactions,
+  mockResources
 } from './clientData';
 
 // Determine if running on static cloud hosting (GitHub Pages, Vercel, Netlify, etc.)
@@ -159,9 +163,36 @@ function handleFallback(url, method, data) {
   }
 
   // Locations & Hospitals
-  if (cleanUrl.includes('/locations')) return { success: true, locations: mockLocations };
-  if (cleanUrl.includes('/hospitals')) return { success: true, hospitals: mockHospitals };
-  if (cleanUrl.includes('/inventory')) return { success: true, stock: mockDeliveries };
+  if (cleanUrl.includes('/locations')) return { success: true, locations: mockLocations, data: mockLocations };
+  if (cleanUrl.includes('/hospitals')) return { success: true, hospitals: mockHospitals, data: mockHospitals };
+
+  // Inventory & Warehouse Logistics
+  if (cleanUrl.includes('/inventory/stock')) {
+    return { success: true, count: mockInventory.length, stock: mockInventory, inventory: mockInventory, data: mockInventory };
+  }
+  if (cleanUrl.includes('/inventory/transactions')) {
+    return { success: true, count: mockTransactions.length, transactions: mockTransactions, data: mockTransactions };
+  }
+  if (cleanUrl.includes('/inventory/warehouses') || cleanUrl.includes('/resources/warehouses')) {
+    return { success: true, count: mockWarehouses.length, warehouses: mockWarehouses, data: mockWarehouses };
+  }
+  if (cleanUrl.includes('/resources/inventory') || cleanUrl.includes('/inventory')) {
+    return { success: true, count: mockInventory.length, stock: mockInventory, inventory: mockInventory, data: mockInventory };
+  }
+
+  // Resources Operations & Allocation
+  if (cleanUrl.includes('/resources/requests')) {
+    return { success: true, count: mockRequests.length, requests: mockRequests, data: mockRequests };
+  }
+  if (cleanUrl.includes('/resources/allocate')) {
+    return { success: true, message: 'Stock allocated and reserved successfully' };
+  }
+  if (cleanUrl.includes('/resources/replenishment')) {
+    return { success: true, message: 'Stock replenished into warehouse successfully' };
+  }
+  if (cleanUrl.includes('/resources')) {
+    return { success: true, count: mockResources.length, resources: mockResources, data: mockResources };
+  }
 
   return { success: true, message: 'Operation successful' };
 }

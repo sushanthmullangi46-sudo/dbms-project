@@ -187,44 +187,86 @@ def create_request_root(
 
 # 2. Inventory Endpoints
 @router.get("/inventory/stock")
+@router.get("/inventory")
 def get_inventory_stock(
     warehouseId: Optional[int] = None,
+    warehouse_id: Optional[int] = None,
+    stockStatus: Optional[str] = None,
+    stock_status: Optional[str] = None,
+    search: Optional[str] = None,
     category: Optional[str] = None,
     current_user: UserAccount = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    w_id = warehouseId or warehouse_id
+    status_filter = (stockStatus or stock_status or "").upper()
     query = db.query(Inventory)
-    if warehouseId:
-        query = query.filter(Inventory.warehouse_id == warehouseId)
+    if w_id:
+        query = query.filter(Inventory.warehouse_id == w_id)
     inv_list = query.all()
 
     stock_items = []
     for inv in inv_list:
-        if category and inv.resource and inv.resource.category.upper() != category.upper():
+        res = inv.resource
+        wh = inv.warehouse
+        res_name = res.resource_name if res else "Relief Supply"
+        res_cat = res.category if res else "SUPPLIES"
+        res_unit = res.unit if res else "Units"
+        wh_name = wh.warehouse_name if wh else "Main Disaster Depot"
+        wh_loc = wh.location.location_name if wh and wh.location else (wh.location.address if wh and wh.location else "Bangalore Sector")
+
+        # Category filtering
+        if category and res_cat.upper() != category.upper():
             continue
-        stock_items.append({
+
+        # Search filtering
+        if search:
+            s_low = search.lower()
+            if s_low not in res_name.lower() and s_low not in wh_name.lower() and s_low not in res_cat.lower():
+                continue
+
+        # Status calculation
+        if inv.quantity_available == 0:
+            item_status = "CRITICAL"
+        elif inv.quantity_available <= inv.reorder_threshold:
+            item_status = "LOW"
+        else:
+            item_status = "NORMAL"
+
+        if status_filter and status_filter != "ALL" and item_status != status_filter:
+            continue
+
+        item_data = {
             "INVENTORYID": inv.inventory_id,
             "inventory_id": inv.inventory_id,
             "WAREHOUSEID": inv.warehouse_id,
             "warehouse_id": inv.warehouse_id,
-            "WAREHOUSENAME": inv.warehouse.warehouse_name if inv.warehouse else "Main Depot",
-            "warehouse_name": inv.warehouse.warehouse_name if inv.warehouse else "Main Depot",
+            "WAREHOUSENAME": wh_name,
+            "warehouse_name": wh_name,
+            "WAREHOUSELOCATION": wh_loc,
+            "location_name": wh_loc,
             "RESOURCEID": inv.resource_id,
             "resource_id": inv.resource_id,
-            "RESOURCENAME": inv.resource.resource_name if inv.resource else "Relief Item",
-            "resource_name": inv.resource.resource_name if inv.resource else "Relief Item",
-            "CATEGORY": inv.resource.category if inv.resource else "SUPPLIES",
-            "category": inv.resource.category if inv.resource else "SUPPLIES",
+            "RESOURCENAME": res_name,
+            "resource_name": res_name,
+            "CATEGORY": res_cat,
+            "category": res_cat,
+            "QUANTITYAVAILABLE": inv.quantity_available,
             "QUANTITYONHAND": inv.quantity_available,
             "quantity_available": inv.quantity_available,
             "QUANTITYRESERVED": inv.quantity_reserved,
             "quantity_reserved": inv.quantity_reserved,
             "REORDERLEVEL": inv.reorder_threshold,
             "reorder_threshold": inv.reorder_threshold,
-            "UNIT": inv.resource.unit if inv.resource else "Units",
-            "unit": inv.resource.unit if inv.resource else "Units",
-            "STATUS": "ADEQUATE" if inv.quantity_available > inv.reorder_threshold else "LOW_STOCK"
-        })
+            "UNIT": res_unit,
+            "unit": res_unit,
+            "STOCKSTATUS": item_status,
+            "STATUS": item_status,
+            "status": item_status,
+            "LASTUPDATED": datetime.utcnow().isoformat(),
+            "last_updated": datetime.utcnow().isoformat()
+        }
+        stock_items.append(item_data)
 
     return {
         "success": True,
@@ -235,33 +277,66 @@ def get_inventory_stock(
 
 @router.get("/inventory/transactions")
 def get_inventory_transactions(
+    warehouseId: Optional[int] = None,
+    warehouse_id: Optional[int] = None,
     limit: int = 50,
     current_user: UserAccount = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    allocs = db.query(ResourceAllocation).order_by(ResourceAllocation.allocated_at.desc()).limit(limit).all()
+    w_id = warehouseId or warehouse_id
+    query = db.query(ResourceAllocation)
+    if w_id:
+        query = query.filter(ResourceAllocation.warehouse_id == w_id)
+    allocs = query.order_by(ResourceAllocation.allocated_at.desc()).limit(limit).all()
     tx_list = []
     for a in allocs:
         wh_name = a.warehouse.warehouse_name if a.warehouse else "Central Vault"
+        res_name = a.resource.resource_name if hasattr(a, "resource") and a.resource else (a.dispatch_reference or "Relief Supplies")
+        res_unit = a.resource.unit if hasattr(a, "resource") and a.resource else "Units"
+        status_val = getattr(a, "allocation_status", "RESERVED")
+        tx_type = "DISPATCH_ALLOCATION" if status_val in ["DISPATCHED", "COMPLETED"] else "STOCK_RESERVATION"
+        iso_time = a.allocated_at.isoformat() if a.allocated_at else datetime.utcnow().isoformat()
+        qty = getattr(a, "allocated_quantity", 100)
+
         tx_list.append({
             "TRANSACTIONID": f"TX-{a.allocation_id:04d}",
-            "TIMESTAMP": a.allocated_at.isoformat() if a.allocated_at else datetime.utcnow().isoformat(),
-            "TYPE": "DISPATCH_ALLOCATION" if a.is_dispatched else "STOCK_RESERVATION",
-            "RESOURCENAME": a.dispatch_reference or "Relief Supplies",
-            "QUANTITY": 100,
+            "transaction_id": a.allocation_id,
+            "TIMESTAMP": iso_time,
+            "TRANSACTIONTIME": iso_time,
+            "TYPE": tx_type,
+            "TRANSACTIONTYPE": tx_type,
+            "RESOURCENAME": res_name,
+            "resource_name": res_name,
+            "QUANTITY": qty,
+            "quantity": qty,
+            "UNIT": res_unit,
+            "unit": res_unit,
             "WAREHOUSENAME": wh_name,
+            "warehouse_name": wh_name,
             "PERFORMEDBY": "Dr. Suresh Hegde (Relief Coordinator)",
+            "PERFORMEDBYNAME": "Dr. Suresh Hegde (Relief Coordinator)",
+            "performed_by_name": "Dr. Suresh Hegde (Relief Coordinator)",
             "STATUS": "VERIFIED"
         })
     if not tx_list:
         tx_list.append({
             "TRANSACTIONID": "TX-0001",
+            "transaction_id": 1,
             "TIMESTAMP": datetime.utcnow().isoformat(),
+            "TRANSACTIONTIME": datetime.utcnow().isoformat(),
             "TYPE": "BASELINE_STOCK_INITIALIZATION",
+            "TRANSACTIONTYPE": "BASELINE_STOCK_INITIALIZATION",
             "RESOURCENAME": "Emergency 72hr Food Ration Kits",
+            "resource_name": "Emergency 72hr Food Ration Kits",
             "QUANTITY": 2500,
-            "WAREHOUSENAME": "Hebbal Central Reserve Depot",
-            "PERFORMEDBY": "System Initialization",
+            "quantity": 2500,
+            "UNIT": "Kits",
+            "unit": "Kits",
+            "WAREHOUSENAME": "Hebbal Central Disaster Reserve Depot",
+            "warehouse_name": "Hebbal Central Disaster Reserve Depot",
+            "PERFORMEDBY": "Dr. Suresh Hegde (Relief Coordinator)",
+            "PERFORMEDBYNAME": "Dr. Suresh Hegde (Relief Coordinator)",
+            "performed_by_name": "Dr. Suresh Hegde (Relief Coordinator)",
             "STATUS": "VERIFIED"
         })
     return {"success": True, "count": len(tx_list), "transactions": tx_list}
@@ -278,12 +353,16 @@ def get_inventory_warehouses(
             "warehouse_id": w.warehouse_id,
             "WAREHOUSENAME": w.warehouse_name,
             "warehouse_name": w.warehouse_name,
+            "LOCATIONID": w.location_id,
+            "location_id": w.location_id,
+            "LOCATIONNAME": w.location.location_name if w.location else "Sector",
+            "location_name": w.location.location_name if w.location else "Sector",
+            "CITY": w.location.city if w.location else "Bangalore",
+            "city": w.location.city if w.location else "Bangalore",
             "MANAGERNAME": w.manager_name,
             "manager_name": w.manager_name,
             "CAPACITYPALLETS": w.capacity_pallets,
             "capacity_pallets": w.capacity_pallets,
-            "LOCATIONNAME": w.location.location_name if w.location else "Sector",
-            "location_name": w.location.location_name if w.location else "Sector",
             "ISACTIVE": w.is_active,
             "is_active": w.is_active
         } for w in whs

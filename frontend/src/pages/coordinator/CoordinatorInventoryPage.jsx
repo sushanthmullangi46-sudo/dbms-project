@@ -33,15 +33,23 @@ export default function CoordinatorInventoryPage() {
 
   const fetchInventoryData = async () => {
     try {
-      const [whRes, invRes, resList] = await Promise.all([
+      const [whRes, invRes, resList] = await Promise.allSettled([
         api.get('/resources/warehouses'),
         api.get('/resources/inventory'),
         api.get('/resources')
       ]);
 
-      if (Array.isArray(whRes)) setWarehouses(whRes);
-      if (Array.isArray(invRes)) setInventory(invRes);
-      if (Array.isArray(resList)) setResources(resList);
+      const whData = whRes.status === 'fulfilled' ? whRes.value : null;
+      const invData = invRes.status === 'fulfilled' ? invRes.value : null;
+      const resData = resList.status === 'fulfilled' ? resList.value : null;
+
+      const rawWh = (whData && (whData.warehouses || whData.data)) || (Array.isArray(whData) ? whData : []);
+      const rawInv = (invData && (invData.inventory || invData.stock || invData.data)) || (Array.isArray(invData) ? invData : []);
+      const rawRes = (resData && (resData.resources || resData.data)) || (Array.isArray(resData) ? resData : []);
+
+      if (rawWh.length > 0) setWarehouses(rawWh);
+      if (rawInv.length > 0) setInventory(rawInv);
+      if (rawRes.length > 0) setResources(rawRes);
     } catch (e) {
       console.error(e);
       // Fallback
@@ -108,7 +116,7 @@ export default function CoordinatorInventoryPage() {
 
       {/* Warehouses Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {warehouses.map((wh) => (
+        {(warehouses || []).map((wh) => (
           <div key={wh.warehouse_id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-2">
             <div className="flex justify-between items-start">
               <div>
@@ -149,42 +157,50 @@ export default function CoordinatorInventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {inventory.map((inv) => {
-                const avail = inv.quantity_available || inv.QUANTITYAVAILABLE || 0;
-                const rsv = inv.quantity_reserved || inv.QUANTITYRESERVED || 0;
-                const isLow = avail <= (inv.reorder_threshold || 10);
+              {inventory && inventory.length > 0 ? (
+                inventory.map((inv) => {
+                  const avail = inv.quantity_available || inv.QUANTITYAVAILABLE || 0;
+                  const rsv = inv.quantity_reserved || inv.QUANTITYRESERVED || 0;
+                  const isLow = avail <= (inv.reorder_threshold || 10);
 
-                return (
-                  <tr key={inv.inventory_id || Math.random()} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-3 font-sans text-slate-300">
-                      {inv.warehouse_name || `Warehouse #${inv.warehouse_id}`}
-                    </td>
-                    <td className="py-3 px-3 font-sans font-bold text-white">
-                      {inv.resource_name || `Resource #${inv.resource_id}`}
-                    </td>
-                    <td className="py-3 px-3 text-right text-emerald-400 font-bold">
-                      {avail} {inv.unit || ''}
-                    </td>
-                    <td className="py-3 px-3 text-right text-amber-400 font-bold">
-                      {rsv} {inv.unit || ''}
-                    </td>
-                    <td className="py-3 px-3 text-right text-slate-200 font-bold">
-                      {avail + rsv} {inv.unit || ''}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          isLow
-                            ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                            : 'bg-emerald-500/20 text-emerald-400'
-                        }`}
-                      >
-                        {isLow ? 'LOW STOCK' : 'OPTIMAL'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={inv.inventory_id || Math.random()} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3 px-3 font-sans text-slate-300">
+                        {inv.warehouse_name || `Warehouse #${inv.warehouse_id}`}
+                      </td>
+                      <td className="py-3 px-3 font-sans font-bold text-white">
+                        {inv.resource_name || `Resource #${inv.resource_id}`}
+                      </td>
+                      <td className="py-3 px-3 text-right text-emerald-400 font-bold">
+                        {avail} {inv.unit || ''}
+                      </td>
+                      <td className="py-3 px-3 text-right text-amber-400 font-bold">
+                        {rsv} {inv.unit || ''}
+                      </td>
+                      <td className="py-3 px-3 text-right text-slate-200 font-bold">
+                        {avail + rsv} {inv.unit || ''}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            isLow
+                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                              : 'bg-emerald-500/20 text-emerald-400'
+                          }`}
+                        >
+                          {isLow ? 'LOW STOCK' : 'OPTIMAL'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-slate-500 font-sans">
+                    No warehouse inventory balances found in database.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -209,7 +225,7 @@ export default function CoordinatorInventoryPage() {
                   onChange={(e) => setSelWarehouseId(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
                 >
-                  {warehouses.map((wh) => (
+                  {(warehouses || []).map((wh) => (
                     <option key={wh.warehouse_id} value={wh.warehouse_id}>
                       {wh.warehouse_name}
                     </option>

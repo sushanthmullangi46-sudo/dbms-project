@@ -34,10 +34,9 @@ export default function CoordinatorRequestsPage() {
   const fetchRequests = async () => {
     try {
       const res = await api.get('/resources/requests');
-      if (Array.isArray(res)) {
-        setRequests(res);
-      } else if (res && res.requests) {
-        setRequests(res.requests);
+      const rawReqs = (res && (res.requests || res.data)) || (Array.isArray(res) ? res : []);
+      if (rawReqs.length > 0) {
+        setRequests(rawReqs);
       }
     } catch (e) {
       console.error(e);
@@ -85,9 +84,10 @@ export default function CoordinatorRequestsPage() {
   const fetchWarehouses = async () => {
     try {
       const res = await api.get('/resources/warehouses');
-      if (Array.isArray(res)) {
-        setWarehouses(res);
-        if (res.length > 0) setWarehouseId(res[0].warehouse_id);
+      const rawWh = (res && (res.warehouses || res.data)) || (Array.isArray(res) ? res : []);
+      if (rawWh.length > 0) {
+        setWarehouses(rawWh);
+        if (rawWh[0]?.warehouse_id) setWarehouseId(rawWh[0].warehouse_id);
       } else {
         setWarehouses([
           { warehouse_id: 1, warehouse_name: 'Hebbal Central Disaster Reserve Depot' },
@@ -168,7 +168,7 @@ export default function CoordinatorRequestsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {requests.map((req) => (
+          {(requests || []).map((req) => (
             <div
               key={req.request_id}
               className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-700 transition-all"
@@ -248,7 +248,7 @@ export default function CoordinatorRequestsPage() {
                   onChange={(e) => setWarehouseId(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-sans"
                 >
-                  {warehouses.map((wh) => (
+                  {(warehouses || []).map((wh) => (
                     <option key={wh.warehouse_id} value={wh.warehouse_id}>
                       {wh.warehouse_name}
                     </option>

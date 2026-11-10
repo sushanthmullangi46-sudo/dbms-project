@@ -37,10 +37,14 @@ export default function CoordinatorDashboard() {
         api.get('/resources/warehouses')
       ]);
 
+      const rawReqs = (reqs && (reqs.requests || reqs.data)) || (Array.isArray(reqs) ? reqs : []);
+      const rawDelivs = (delivs && (delivs.deliveries || delivs.data)) || (Array.isArray(delivs) ? delivs : []);
+      const rawWhs = (whs && (whs.warehouses || whs.data)) || (Array.isArray(whs) ? whs : []);
+
       setStats({
-        pendingRequests: Array.isArray(reqs) ? reqs.filter(r => r.status === 'PENDING_APPROVAL').length : 3,
-        activeDispatches: Array.isArray(delivs) ? delivs.filter(d => d.status !== 'DELIVERED').length : 2,
-        totalWarehouses: Array.isArray(whs) ? whs.length : 3,
+        pendingRequests: rawReqs.filter(r => (r.status || '').toUpperCase().includes('PENDING')).length,
+        activeDispatches: rawDelivs.filter(d => (d.status || '').toUpperCase() !== 'DELIVERED').length,
+        totalWarehouses: rawWhs.length || 3,
         shortageAlerts: 1
       });
     } catch (e) {
