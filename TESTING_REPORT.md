@@ -75,3 +75,4 @@ backend_py/tests/test_workflow.py::TestUDRRMSWorkflow::test_14_audit_event_gener
 | **16** | Persistence After Backend Restart | Terminate Uvicorn, restart service | Records survive process termination | All 27 tables retain complete dataset | **PASS** |
 | **17** | Map Data Retrieval | GET to `/map/markers` | Returns valid GeoJSON coordinate nodes | Stored reports render at exact lat/lng | **PASS** |
 | **18** | Dashboard Analytics Accuracy | GET to `/analytics/dashboard` | Accurate counts from real SQL tables | KPIs match physical database row counts | **PASS** |
+

@@ -12,6 +12,38 @@ from app.models.schema import (
 from app.services.audit_service import AuditService
 from app.services.scoring_service import ScoringService
 
+SUPPLY_RESOURCE_MAP = {
+    "water": 4,
+    "drinking water": 4,
+    "food": 3,
+    "food packets": 3,
+    "first aid": 5,
+    "first-aid": 5,
+    "first-aid kits": 5,
+    "medical supplies": 8,
+    "emergency medicines": 8,
+    "medicines": 8,
+    "medicine": 8,
+    "blankets": 7,
+    "blankets & warm clothing": 7,
+    "clothing": 7,
+    "rescue boats": 1,
+    "boat": 1,
+    "boats": 1,
+    "emergency shelter": 9,
+    "tents": 9,
+    "shelter": 9,
+    "oxygen cylinders": 2,
+    "oxygen": 2,
+    "baby supplies": 10,
+    "baby food": 10,
+    "infant": 10,
+    "sanitation kits": 11,
+    "sanitation": 11,
+    "storm pump": 6,
+    "pump": 6
+}
+
 class WorkflowService:
 
     # STAGE 1: DISASTER REPORT SUBMITTED
@@ -28,13 +60,15 @@ class WorkflowService:
         trapped_persons: int = 0,
         urgent_medical_needed: bool = False,
         evacuation_needed: bool = False,
-        attachment_urls: List[str] = []
+        attachment_urls: List[str] = [],
+        requested_supplies: List[Dict[str, Any]] = None,
+        severity: str = "P2"
     ) -> DisasterReport:
         location = db.query(DisasterLocation).filter(DisasterLocation.location_id == location_id).first()
         if not location:
             raise HTTPException(status_code=400, detail="Invalid disaster location ID")
 
-        # Generate unique Report Reference ID (e.g., RPT-20261009-A1B2)
+        # Generate unique Report Reference ID (e.g., RPT-20261111-A1B2)
         ref_id = f"RPT-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
 
         report = DisasterReport(
@@ -57,24 +91,91 @@ class WorkflowService:
         db.refresh(report)
 
         # Attachments
-        for url in attachment_urls:
-            att = ReportAttachment(
-                report_id=report.report_id,
-                file_url=url,
-                file_type="IMAGE" if any(url.endswith(x) for x in [".png", ".jpg", ".jpeg"]) else "DOCUMENT"
-            )
-            db.add(att)
         if attachment_urls:
+            for url in attachment_urls:
+                att = ReportAttachment(
+                    report_id=report.report_id,
+                    file_url=url,
+                    file_type="IMAGE" if any(url.endswith(x) for x in [".png", ".jpg", ".jpeg"]) else "DOCUMENT"
+                )
+                db.add(att)
+            db.commit()
+
+        # Synchronously create or link active operational incident so that Rescue & Logistics share this emergency
+        sev_level = severity or ("P1" if (trapped_persons > 0 or urgent_medical_needed) else "P2")
+        inc_code = f"INC-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+        disaster = Disaster(
+            incident_code=inc_code,
+            disaster_name=f"{disaster_type} Emergency at {location.location_name}",
+            disaster_type=disaster_type,
+            location_id=location_id,
+            severity_score=1.5 if sev_level == "P1" else 1.0,
+            severity_level=sev_level,
+            status="ACTIVE",
+            activated_at=datetime.utcnow()
+        )
+        db.add(disaster)
+        db.commit()
+        db.refresh(disaster)
+
+        report.disaster_id = disaster.disaster_id
+        db.commit()
+
+        # Itemize requested supplies for Logistics & Rescue
+        items_to_add = []
+        if requested_supplies:
+            for sup in requested_supplies:
+                raw_name = (sup.get("name") or sup.get("resource_name") or sup.get("item") or "").lower().strip()
+                qty = int(sup.get("quantity") or sup.get("qty") or 1)
+                res_id = sup.get("resource_id") or SUPPLY_RESOURCE_MAP.get(raw_name)
+                if not res_id:
+                    for key, val in SUPPLY_RESOURCE_MAP.items():
+                        if key in raw_name:
+                            res_id = val
+                            break
+                if not res_id:
+                    res_id = 3 # fallback to food ration
+                items_to_add.append((res_id, max(1, qty)))
+        else:
+            # Default supplies based on condition
+            if urgent_medical_needed or injuries_reported > 0:
+                items_to_add.append((5, max(5, injuries_reported * 2)))
+                items_to_add.append((8, 20))
+            if evacuation_needed or trapped_persons > 0:
+                items_to_add.append((1, max(1, (trapped_persons + 5) // 6)))
+                items_to_add.append((4, max(20, people_affected * 2)))
+                items_to_add.append((3, max(20, people_affected * 2)))
+                items_to_add.append((7, max(10, people_affected)))
+
+        if items_to_add:
+            req = ResourceRequest(
+                disaster_id=disaster.disaster_id,
+                requested_by=reporter_user_id,
+                status="PENDING_APPROVAL",
+                priority=sev_level,
+                requested_at=datetime.utcnow()
+            )
+            db.add(req)
+            db.commit()
+            db.refresh(req)
+            for r_id, q_req in items_to_add:
+                db.add(RequestItem(
+                    request_id=req.request_id,
+                    resource_id=r_id,
+                    quantity_requested=q_req,
+                    quantity_approved=0
+                ))
             db.commit()
 
         # Audit initial event
         AuditService.log_audit(
             db, "DISASTER_REPORT", report.report_reference_id, "REPORT_SUBMITTED",
             reporter_user_id, "Citizen Reporter",
-            {"disaster_type": disaster_type, "people_affected": people_affected, "location": location.location_name}
+            {"disaster_type": disaster_type, "people_affected": people_affected, "location": location.location_name, "incident_code": disaster.incident_code}
         )
 
         return report
+
 
     # STAGE 2: REPORT VERIFICATION
     @staticmethod
@@ -193,6 +294,26 @@ class WorkflowService:
             raise HTTPException(status_code=404, detail="Disaster report not found")
         if report.status not in ("VERIFIED", "ASSESSED"):
             raise HTTPException(status_code=400, detail="Cannot activate incident from unverified report")
+
+        if report.disaster_id:
+            disaster = db.query(Disaster).filter(Disaster.disaster_id == report.disaster_id).first()
+            if disaster:
+                disaster.disaster_name = disaster_name
+                disaster.severity_level = priority_level
+                disaster.status = "ACTIVE"
+                disaster.activated_at = datetime.utcnow()
+                db.commit()
+                db.refresh(disaster)
+                AuditService.log_workflow_event(
+                    db, disaster.disaster_id, "INCIDENT_ACTIVATED", officer.user_id,
+                    previous_state="ASSESSED", new_state="ACTIVE", reason=f"Activated by {officer.full_name}"
+                )
+                AuditService.log_audit(
+                    db, "DISASTER", disaster.incident_code, "INCIDENT_ACTIVATED",
+                    officer.user_id, officer.full_name,
+                    {"linked_report": report.report_reference_id, "priority": priority_level}
+                )
+                return disaster
 
         inc_code = f"INC-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
 
@@ -396,30 +517,44 @@ class WorkflowService:
         if not assignment:
             raise HTTPException(status_code=404, detail="Team assignment not found")
 
+        status_norm = (new_status or "ASSIGNED").upper().strip()
+        alias_map = {
+            "ACCEPTED": "ACKNOWLEDGED",
+            "ARRIVED": "ON_SCENE",
+            "IN_PROGRESS": "RESCUE_IN_PROGRESS"
+        }
+        target_status = alias_map.get(status_norm, status_norm)
+
         valid_transitions = {
-            "ASSIGNED": ["ACKNOWLEDGED", "CANCELLED"],
-            "ACKNOWLEDGED": ["EN_ROUTE", "CANCELLED"],
-            "EN_ROUTE": ["ON_SCENE", "CANCELLED"],
-            "ON_SCENE": ["COMPLETED", "CANCELLED"],
+            "ASSIGNED": ["ACKNOWLEDGED", "ACCEPTED", "PREPARING", "DISPATCHED", "EN_ROUTE", "CANCELLED"],
+            "ACCEPTED": ["ACKNOWLEDGED", "PREPARING", "DISPATCHED", "EN_ROUTE", "CANCELLED"],
+            "ACKNOWLEDGED": ["PREPARING", "DISPATCHED", "EN_ROUTE", "ON_SCENE", "ARRIVED", "CANCELLED"],
+            "PREPARING": ["DISPATCHED", "EN_ROUTE", "ON_SCENE", "ARRIVED", "CANCELLED"],
+            "DISPATCHED": ["EN_ROUTE", "ON_SCENE", "ARRIVED", "CANCELLED"],
+            "EN_ROUTE": ["ON_SCENE", "ARRIVED", "RESCUE_IN_PROGRESS", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+            "ARRIVED": ["ON_SCENE", "RESCUE_IN_PROGRESS", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+            "ON_SCENE": ["ARRIVED", "RESCUE_IN_PROGRESS", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
+            "IN_PROGRESS": ["RESCUE_IN_PROGRESS", "COMPLETED", "CANCELLED"],
+            "RESCUE_IN_PROGRESS": ["COMPLETED", "CANCELLED"],
             "COMPLETED": [],
             "CANCELLED": []
         }
         allowed = valid_transitions.get(assignment.assignment_status, [])
-        if new_status not in allowed:
+        if status_norm not in allowed and target_status not in allowed:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid assignment transition: cannot move from {assignment.assignment_status} to {new_status}"
             )
 
-        assignment.assignment_status = new_status
+        assignment.assignment_status = status_norm
         now = datetime.utcnow()
-        if new_status == "ACKNOWLEDGED":
+        if target_status in ("ACKNOWLEDGED", "PREPARING"):
             assignment.acknowledged_at = now
-        elif new_status == "EN_ROUTE":
+        elif target_status in ("DISPATCHED", "EN_ROUTE"):
             assignment.en_route_at = now
-        elif new_status == "ON_SCENE":
+        elif target_status in ("ON_SCENE", "RESCUE_IN_PROGRESS"):
             assignment.on_scene_at = now
-        elif new_status in ("COMPLETED", "CANCELLED"):
+        elif target_status in ("COMPLETED", "CANCELLED"):
             assignment.completed_at = now
             # Free team back to AVAILABLE
             team = db.query(ResponseTeam).filter(ResponseTeam.team_id == assignment.team_id).first()

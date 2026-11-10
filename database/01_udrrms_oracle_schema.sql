@@ -447,6 +447,25 @@ CREATE TABLE AUDIT_LOG (
 );
 
 -- --------------------------------------------------------------------
+-- 28. RESCUE_LOCATION_HISTORY (Live GIS GPS Telemetry Tracking)
+-- --------------------------------------------------------------------
+CREATE TABLE RESCUE_LOCATION_HISTORY (
+    HistoryID NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    MissionID NUMBER,
+    TeamID NUMBER NOT NULL,
+    Latitude NUMBER(10, 6) NOT NULL,
+    Longitude NUMBER(10, 6) NOT NULL,
+    Speed NUMBER(6, 2) DEFAULT 0.0,
+    Heading NUMBER(5, 1) DEFAULT 0.0,
+    Accuracy NUMBER(6, 2) DEFAULT 5.0,
+    StatusNote VARCHAR2(200),
+    RecordedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_rlh_mission FOREIGN KEY (MissionID) REFERENCES TEAM_ASSIGNMENT(AssignmentID),
+    CONSTRAINT fk_rlh_team FOREIGN KEY (TeamID) REFERENCES RESPONSE_TEAM(TeamID)
+);
+
+
+-- --------------------------------------------------------------------
 -- PERFORMANCE B-TREE INDEXES
 -- --------------------------------------------------------------------
 CREATE INDEX idx_report_status ON DISASTER_REPORT(Status);

@@ -45,6 +45,12 @@ class DisasterReportCreate(BaseModel):
     urgent_medical_needed: bool = False
     evacuation_needed: bool = False
     attachment_urls: Optional[List[str]] = []
+    severity: Optional[str] = "P2"
+    requested_supplies: Optional[List[Dict[str, Any]]] = []
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
 
 class ReportVerificationAction(BaseModel):
     action: str # VERIFY, REJECT, AWAIT_INFO, LINK_DUPLICATE

@@ -128,29 +128,250 @@ function handleFallback(url, method, data) {
   }
 
   // Missions & Responder
+  if (cleanUrl.includes('/responder/available-incidents') || cleanUrl.includes('/missions/available-incidents')) {
+    const unassigned = mockIncidents.filter(inc => !mockMissions.some(m => m.INCIDENTID === inc.id || m.incident_id === inc.id));
+    return {
+      success: true,
+      count: unassigned.length,
+      incidents: unassigned.map(inc => ({
+        incident_id: inc.id || inc.incident_id,
+        id: inc.id || inc.incident_id,
+        disaster_name: inc.name || inc.incident_name || 'Emergency Incident',
+        disaster_type: inc.type || inc.disaster_type || 'Flood',
+        severity: inc.severity || 'P1',
+        emergency_id: inc.report_reference_id || `RPT-20261111-${inc.id}`,
+        report_reference_id: inc.report_reference_id || `RPT-20261111-${inc.id}`,
+        report_id: inc.id,
+        description: inc.description || 'Emergency assistance requested',
+        location_name: inc.location_name || 'Hebbal Sector',
+        trapped_persons: 4,
+        injuries_reported: 2,
+        people_affected: 20
+      }))
+    };
+  }
+
+  if (cleanUrl.includes('/responder/missions/claim') || cleanUrl.includes('/missions/claim')) {
+    const targetIncId = Number(data?.incident_id || data?.disaster_id || data?.report_id || 1);
+    const inc = mockIncidents.find(x => x.id === targetIncId) || mockIncidents[0];
+    const newMission = {
+      MISSIONID: mockMissions.length + 101,
+      mission_id: mockMissions.length + 101,
+      id: mockMissions.length + 101,
+      INCIDENTID: targetIncId,
+      disaster_id: targetIncId,
+      INCIDENTNAME: inc.name || inc.incident_name || 'Emergency Crisis Operation',
+      EMERGENCYID: inc.report_reference_id || `RPT-20261111-${targetIncId}`,
+      emergency_id: inc.report_reference_id || `RPT-20261111-${targetIncId}`,
+      STATUS: 'ASSIGNED',
+      status: 'ASSIGNED',
+      assignment_status: 'ASSIGNED',
+      PRIORITY: inc.severity || 'P1',
+      priority: inc.severity || 'P1',
+      TARGETLOCATION: inc.location_name || 'Hebbal Flyover Junction',
+      TARGETLATITUDE: 13.0358,
+      TARGETLONGITUDE: 77.5970,
+      TEAMNAME: 'NDRF Alpha Water Rescue',
+      team_name: 'NDRF Alpha Water Rescue'
+    };
+    mockMissions.unshift(newMission);
+    return {
+      success: true,
+      message: 'Incident claimed and squad assigned!',
+      mission_id: newMission.MISSIONID,
+      mission: newMission
+    };
+  }
+
   if (cleanUrl.includes('/missions') || cleanUrl.includes('/responder/missions')) {
+    if (cleanUrl.includes('/status')) {
+      const match = cleanUrl.match(/missions\/(\d+)/);
+      const mId = match ? Number(match[1]) : 1;
+      const m = mockMissions.find(x => x.MISSIONID === mId || x.id === mId);
+      if (m) {
+        m.STATUS = data?.status || 'EN_ROUTE';
+        m.status = m.STATUS;
+        m.assignment_status = m.STATUS;
+      }
+      return { success: true, message: `Status advanced to ${data?.status || 'EN_ROUTE'}`, status: data?.status || 'EN_ROUTE' };
+    }
+    if (cleanUrl.includes('/complete')) {
+      const match = cleanUrl.match(/missions\/(\d+)/);
+      const mId = match ? Number(match[1]) : 1;
+      const m = mockMissions.find(x => x.MISSIONID === mId || x.id === mId);
+      if (m) {
+        m.STATUS = 'COMPLETED';
+        m.status = 'COMPLETED';
+        m.assignment_status = 'COMPLETED';
+      }
+      return { success: true, message: 'Mission completed!', status: 'COMPLETED' };
+    }
+    const matchDetail = cleanUrl.match(/missions\/(\d+)/);
+    if (matchDetail) {
+      const mId = Number(matchDetail[1]);
+      const m = mockMissions.find(x => x.MISSIONID === mId || x.id === mId) || mockMissions[0];
+      return { success: true, mission: m, ...m };
+    }
     return { success: true, count: mockMissions.length, missions: mockMissions, data: mockMissions };
+  }
+
+  // Reports & Live Tracking
+  if (cleanUrl.includes('/tracking')) {
+    const match = cleanUrl.match(/reports\/(\d+)/);
+    const rptId = match ? Number(match[1]) : 1;
+    const rpt = mockCitizenReports.find(x => x.report_id === rptId || x.id === rptId) || mockCitizenReports[0] || {};
+    const refId = rpt.report_reference_id || `RPT-20261111-${rptId}`;
+
+    return {
+      success: true,
+      emergency: {
+        report_id: rptId,
+        report_reference_id: refId,
+        emergency_id: `EMG-${String(rptId).padStart(4, '0')}`,
+        disaster_type: rpt.disaster_type || 'Flood Emergency',
+        description: rpt.description || 'Water rising rapidly around residential block.',
+        status: rpt.status || 'SUBMITTED',
+        people_affected: rpt.people_affected || 15,
+        injuries: 2,
+        trapped: 4,
+        missing: 0,
+        submitted_at: rpt.created_at || new Date().toISOString(),
+        target_location: {
+          location_name: 'Hebbal Flyover Junction',
+          address: 'North Sector Ward 21',
+          latitude: 13.0358,
+          longitude: 77.5970
+        }
+      },
+      rescue_team: {
+        assigned: true,
+        team_id: 1,
+        team_name: 'NDRF Alpha Water Rescue Squad',
+        leader_name: 'Capt. Arvind Rao',
+        contact_phone: '+91-9845011111',
+        specialization: 'WATER_RESCUE',
+        assignment_status: 'EN_ROUTE',
+        status: 'EN_ROUTE',
+        latitude: 13.018,
+        longitude: 77.583,
+        speed_kmh: 38.5,
+        distance_km: 2.1,
+        eta_minutes: 5,
+        route_trail: [
+          [13.001, 77.575],
+          [13.018, 77.583],
+          [13.0358, 77.5970]
+        ]
+      },
+      supplies: [
+        {
+          resource_name: 'Purified Potable Water 20L Cans',
+          category: 'WATER',
+          unit: 'Cans',
+          quantity_requested: 50,
+          quantity_approved: 50,
+          status: 'DISPATCHED',
+          dispatch_reference: 'DSP-WTR-8801',
+          warehouse_name: 'Hebbal Central Reserve Depot'
+        },
+        {
+          resource_name: 'Emergency 72hr Food Rations',
+          category: 'FOOD',
+          unit: 'Kits',
+          quantity_requested: 100,
+          quantity_approved: 100,
+          status: 'RESERVED',
+          dispatch_reference: 'DSP-FOD-8802',
+          warehouse_name: 'Hebbal Central Reserve Depot'
+        },
+        {
+          resource_name: 'Inflatable Rescue Boats (Zodiac)',
+          category: 'EQUIPMENT',
+          unit: 'Boats',
+          quantity_requested: 2,
+          quantity_approved: 2,
+          status: 'DISPATCHED',
+          dispatch_reference: 'DSP-BOT-8803',
+          warehouse_name: 'Manyata Logistics Vault'
+        }
+      ]
+    };
   }
 
   // Reports
   if (cleanUrl.includes('/reports')) {
     if (method === 'post') {
+      const rptId = mockCitizenReports.length + 101;
+      const refCode = `RPT-20261111-${Math.floor(1000 + Math.random() * 9000)}`;
       const newReport = {
-        id: mockCitizenReports.length + 100,
-        report_id: mockCitizenReports.length + 100,
-        report_reference_id: `RPT-20261110-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: rptId,
+        report_id: rptId,
+        report_reference_id: refCode,
+        emergency_id: `EMG-${String(rptId).padStart(4, '0')}`,
+        emergency_code: refCode,
         disaster_type: data?.disaster_type || 'Flood',
         description: data?.description || 'Emergency assistance requested',
-        severity: data?.severity || 'HIGH',
+        severity: data?.severity || 'P1',
         status: 'SUBMITTED',
-        people_affected: data?.people_affected || 4,
+        people_affected: data?.people_affected || 15,
         created_at: new Date().toISOString()
       };
       mockCitizenReports.unshift(newReport);
-      return { success: true, message: 'Report submitted successfully!', report: newReport, ...newReport };
+
+      // Synchronously create operational incident in mock memory
+      const newInc = {
+        id: rptId,
+        incident_id: rptId,
+        name: `${data?.disaster_type || 'Flood'} Emergency at Hebbal`,
+        incident_name: `${data?.disaster_type || 'Flood'} Emergency at Hebbal`,
+        type: data?.disaster_type || 'Flood',
+        severity: data?.severity || 'P1',
+        status: 'ACTIVE',
+        location_name: 'Hebbal Flyover Junction',
+        report_reference_id: refCode,
+        description: data?.description || 'Active citizen reported emergency',
+        created_at: new Date().toISOString()
+      };
+      mockIncidents.unshift(newInc);
+
+      // Create linked supplies in mockRequests
+      mockRequests.unshift({
+        request_id: mockRequests.length + 101,
+        REQUESTID: mockRequests.length + 101,
+        id: mockRequests.length + 101,
+        incident_id: rptId,
+        INCIDENTID: rptId,
+        incident_name: newInc.name,
+        INCIDENTNAME: newInc.name,
+        emergency_id: refCode,
+        EMERGENCYID: refCode,
+        report_reference_id: refCode,
+        location_name: 'Hebbal Flyover Junction',
+        priority: data?.severity || 'P1',
+        status: 'PENDING_APPROVAL',
+        STATUS: 'PENDING_APPROVAL',
+        resource_name: 'Emergency 72hr Food Rations & Potable Water',
+        quantity_requested: 100,
+        unit: 'Kits',
+        created_at: new Date().toISOString()
+      });
+
+      return {
+        success: true,
+        message: 'Report submitted successfully!',
+        report: newReport,
+        report_id: rptId,
+        id: rptId,
+        report_reference_id: refCode,
+        emergency_id: `EMG-${String(rptId).padStart(4, '0')}`,
+        emergency_code: refCode,
+        status: 'SUBMITTED',
+        ...newReport
+      };
     }
     return { success: true, count: mockCitizenReports.length, reports: mockCitizenReports, data: mockCitizenReports };
   }
+
 
   // Requests
   if (cleanUrl.includes('/requests')) {

@@ -34,5 +34,9 @@ CREATE INDEX idx_delivery_alloc ON DELIVERIES(allocation_id);
 -- 6. AUDIT LOGS INDEX
 CREATE INDEX idx_audit_created ON AUDIT_LOGS(created_at);
 
+-- 7. RESCUE LOCATION HISTORY INDEXES
+CREATE INDEX idx_rlh_mission ON RESCUE_LOCATION_HISTORY(MissionID);
+CREATE INDEX idx_rlh_recorded ON RESCUE_LOCATION_HISTORY(RecordedAt);
+
 COMMIT;
 

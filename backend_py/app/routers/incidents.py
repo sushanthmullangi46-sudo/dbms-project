@@ -41,12 +41,19 @@ def format_incident_summary(inc: Disaster):
     lng = inc.location.longitude if inc.location else 77.5970
     start_time = inc.activated_at or inc.created_at or datetime.utcnow()
 
+    report = inc.reports[0] if inc.reports else None
+    emg_id = report.report_reference_id if report else inc.incident_code
+    desc = report.description if report else f"Operational disaster response in effect for {inc.disaster_name} ({loc_name})."
+
     return {
         "INCIDENTID": inc.disaster_id,
         "disaster_id": inc.disaster_id,
         "id": inc.disaster_id,
         "INCIDENTCODE": inc.incident_code,
         "incident_code": inc.incident_code,
+        "EMERGENCYID": emg_id,
+        "emergency_id": emg_id,
+        "report_reference_id": emg_id,
         "INCIDENTNAME": inc.disaster_name,
         "disaster_name": inc.disaster_name,
         "name": inc.disaster_name,
@@ -77,8 +84,14 @@ def format_incident_summary(inc: Disaster):
         "is_escalated": inc.is_escalated,
         "REQUESTCOUNT": len(inc.resource_requests),
         "MISSIONCOUNT": len(inc.team_assignments),
-        "DESCRIPTION": f"Operational disaster response in effect for {inc.disaster_name} ({loc_name}).",
-        "description": f"Operational disaster response in effect for {inc.disaster_name} ({loc_name})."
+        "PEOPLEAFFECTED": report.people_affected if report else 10,
+        "people_affected": report.people_affected if report else 10,
+        "TRAPPEDPERSONS": report.trapped_persons if report else 0,
+        "trapped_persons": report.trapped_persons if report else 0,
+        "INJURIESREPORTED": report.injuries_reported if report else 0,
+        "injuries_reported": report.injuries_reported if report else 0,
+        "DESCRIPTION": desc,
+        "description": desc
     }
 
 @router.get("")

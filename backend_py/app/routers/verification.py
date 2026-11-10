@@ -193,5 +193,6 @@ def perform_verification_action(
         "success": True,
         "message": f"Verification action '{action_in.action}' executed successfully.",
         "report_reference_id": report.report_reference_id,
-        "status": report.status
+        "status": report.status,
+        "new_status": report.status
     }

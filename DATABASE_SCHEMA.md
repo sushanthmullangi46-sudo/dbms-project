@@ -105,3 +105,4 @@ CREATE INDEX idx_alloc_request ON RESOURCE_ALLOCATIONS(request_id);
 CREATE INDEX idx_alloc_status ON RESOURCE_ALLOCATIONS(allocation_status);
 CREATE INDEX idx_audit_created ON AUDIT_LOGS(created_at);
 ```
+

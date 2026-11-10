@@ -103,3 +103,4 @@ The Urban Disaster Response & Relief Coordination Platform (UDRRMS / UDR-ORP) is
 | **ADMINISTRATOR** | Col. Rajesh Varma (Chief Officer) | Central incident command, reviews pending verification queue, assesses severity (`P1` to `P4`), overrides priority, assigns specialized rescue teams, monitors live GIS map, validates closure audit checklist. |
 | **RESCUE TEAM** | NDRF Alpha Squad / EMS Trauma | Receives tactical mission orders, views route coordinates, accepts/declines missions, submits field telemetry updates, requests specialized equipment/medical supplies, confirms aid delivery. |
 | **SUPPLIES & LOGISTICS** | Dr. Suresh Hegde (Coordinator) | Manages regional reserve depots (Hebbal, Manyata, Yelahanka), verifies on-hand inventory balances, performs atomic stock reservations, dispatches relief convoys, tracks delivery receipts, records intake. |
+

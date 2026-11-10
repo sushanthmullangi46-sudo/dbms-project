@@ -148,3 +148,4 @@ To demonstrate the full end-to-end integration to your evaluator:
   *A: Submit a report in the citizen portal, then restart the server (`npm start`) or refresh the browser. The report remains in the database and reappears on the administrator dashboard.*
 - **Q: How do I view the raw database tables?**  
   *A: Open `http://localhost:5000/docs` to test endpoints, or inspect `database/udrrms.db` directly using any SQLite viewer or the analytical queries in `database/07_analytical_queries.sql`.*
+

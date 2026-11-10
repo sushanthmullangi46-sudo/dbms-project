@@ -199,29 +199,61 @@ def list_resource_requests(
     results = []
     for r in requests:
         primary_item = r.items[0] if r.items else None
+        rpt = r.disaster.reports[0] if (r.disaster and r.disaster.reports) else None
+        emg_code = rpt.report_reference_id if rpt else (r.disaster.incident_code if r.disaster else f"EMG-{r.disaster_id:04d}")
+        loc_name = r.disaster.location.location_name if (r.disaster and r.disaster.location) else "Bangalore Sector"
+
+        res_name = primary_item.resource.resource_name if primary_item and primary_item.resource else "Emergency Supplies"
+        unit_str = primary_item.resource.unit if primary_item and primary_item.resource else "Units"
+        qty_req = primary_item.quantity_requested if primary_item else 0
+        qty_app = primary_item.quantity_approved if primary_item else 0
+
+        item_list = [
+            {
+                "resource_id": itm.resource_id,
+                "resource_name": itm.resource.resource_name if itm.resource else "Item",
+                "unit": itm.resource.unit if itm.resource else "Units",
+                "quantity_requested": itm.quantity_requested,
+                "quantity_approved": itm.quantity_approved
+            } for itm in r.items
+        ]
+
         results.append({
             "request_id": r.request_id,
+            "REQUESTID": r.request_id,
+            "id": r.request_id,
             "disaster_id": r.disaster_id,
-            "disaster_name": r.disaster.disaster_name if r.disaster else "Emergency",
+            "incident_id": r.disaster_id,
+            "INCIDENTID": r.disaster_id,
+            "disaster_name": r.disaster.disaster_name if r.disaster else "Emergency Operation",
+            "incident_name": r.disaster.disaster_name if r.disaster else "Emergency Operation",
+            "INCIDENTNAME": r.disaster.disaster_name if r.disaster else "Emergency Operation",
+            "emergency_id": emg_code,
+            "EMERGENCYID": emg_code,
+            "emergency_code": emg_code,
+            "EMERGENCYCODE": emg_code,
+            "report_reference_id": emg_code,
+            "location_name": loc_name,
+            "LOCATIONNAME": loc_name,
             "priority": r.priority,
+            "PRIORITY": r.priority,
             "status": r.status,
-            "requested_at": r.requested_at,
+            "STATUS": r.status,
+            "requested_at": r.requested_at.isoformat() if r.requested_at else None,
+            "CREATEDAT": r.requested_at.isoformat() if r.requested_at else None,
             "resource_id": primary_item.resource_id if primary_item else 1,
-            "resource_name": primary_item.resource.resource_name if primary_item and primary_item.resource else "Emergency Supplies",
-            "quantity_requested": primary_item.quantity_requested if primary_item else 0,
-            "quantity_approved": primary_item.quantity_approved if primary_item else 0,
-            "unit": primary_item.resource.unit if primary_item and primary_item.resource else "Units",
-            "items": [
-                {
-                    "resource_id": itm.resource_id,
-                    "resource_name": itm.resource.resource_name if itm.resource else "Item",
-                    "unit": itm.resource.unit if itm.resource else "Units",
-                    "quantity_requested": itm.quantity_requested,
-                    "quantity_approved": itm.quantity_approved
-                } for itm in r.items
-            ]
+            "resource_name": res_name,
+            "RESOURCENAME": res_name,
+            "quantity_requested": qty_req,
+            "QUANTITYREQUESTED": qty_req,
+            "quantity_approved": qty_app,
+            "QUANTITYAPPROVED": qty_app,
+            "unit": unit_str,
+            "UNIT": unit_str,
+            "items": item_list,
+            "ITEMS": item_list
         })
-    return {"success": True, "count": len(results), "requests": results}
+    return {"success": True, "count": len(results), "requests": results, "data": results}
 
 @router.post("/allocate")
 def approve_and_allocate(

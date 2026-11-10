@@ -434,3 +434,21 @@ class AuditLog(Base):
     actor_name = Column(String(100), nullable=True)
     details = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+# 28. RESCUE_LOCATION_HISTORY (Live GPS Telemetry Tracking)
+class RescueLocationHistory(Base):
+    __tablename__ = "rescue_location_history"
+    history_id = Column(Integer, primary_key=True, index=True)
+    mission_id = Column(Integer, ForeignKey("team_assignment.assignment_id"), nullable=True, index=True)
+    team_id = Column(Integer, ForeignKey("response_team.team_id"), nullable=False, index=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    speed = Column(Float, default=0.0, nullable=True) # km/h
+    heading = Column(Float, default=0.0, nullable=True) # degrees
+    accuracy = Column(Float, default=5.0, nullable=True) # meters
+    status_note = Column(String(100), nullable=True)
+    recorded_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    team = relationship("ResponseTeam")
+    assignment = relationship("TeamAssignment")
+

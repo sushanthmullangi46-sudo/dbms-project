@@ -174,8 +174,11 @@ export default function CoordinatorRequestsPage() {
               className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-700 transition-all"
             >
               <div className="space-y-1">
-                <div className="flex items-center space-x-3">
-                  <span className="font-mono text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-lg">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-lg">
+                    {req.emergency_id || req.report_reference_id || `REQ #${req.request_id}`}
+                  </span>
+                  <span className="font-mono text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-lg">
                     REQ #{req.request_id}
                   </span>
                   <span className="text-xs font-bold text-white">
@@ -186,7 +189,7 @@ export default function CoordinatorRequestsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-300">
-                  Target Incident: <strong className="text-slate-100 font-mono">INC-{req.incident_id || 1}</strong> • Priority: <span className="text-rose-400 font-bold">{req.priority || 'P1'}</span>
+                  Target Operation: <strong className="text-slate-100">{req.incident_name || req.disaster_name || `Incident #${req.incident_id || 1}`}</strong> • Sector: <span className="text-cyan-400">{req.location_name || 'Bangalore Sector'}</span> • Priority: <span className="text-rose-400 font-bold">{req.priority || 'P1'}</span>
                 </p>
                 <div className="flex items-center space-x-4 text-[11px] text-slate-400 font-mono pt-1">
                   <span>Requested: <strong className="text-white text-xs">{req.quantity_requested}</strong> units</span>
