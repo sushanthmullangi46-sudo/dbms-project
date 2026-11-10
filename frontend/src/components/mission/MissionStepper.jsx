@@ -10,8 +10,14 @@ const STEPS = [
   'COMPLETED'
 ];
 
+const STATUS_MAP = {
+  'ACKNOWLEDGED': 'ACCEPTED',
+  'ON_SCENE': 'ARRIVED'
+};
+
 export default function MissionStepper({ currentStatus }) {
-  if (currentStatus === 'CANCELLED') {
+  const normStatus = STATUS_MAP[currentStatus] || currentStatus || 'ASSIGNED';
+  if (normStatus === 'CANCELLED') {
     return (
       <div className="flex items-center space-x-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-xs font-semibold">
         <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -20,7 +26,7 @@ export default function MissionStepper({ currentStatus }) {
     );
   }
 
-  const currentIndex = STEPS.indexOf(currentStatus);
+  const currentIndex = STEPS.indexOf(normStatus);
 
   return (
     <div className="w-full py-4">

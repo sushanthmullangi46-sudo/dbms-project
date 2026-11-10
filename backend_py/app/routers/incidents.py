@@ -188,7 +188,7 @@ def get_incident_detail(
             "REQUESTTYPE": "SUPPLIES",
             "PRIORITY": r.priority,
             "STATUS": r.status,
-            "DESCRIPTION": r.notes or "Relief Supplies",
+            "DESCRIPTION": getattr(r, "notes", None) or getattr(r, "rejection_reason", None) or "Relief Supplies",
             "CREATEDAT": r.requested_at.isoformat() if r.requested_at else None
         } for r in inc.resource_requests
     ]
@@ -199,6 +199,7 @@ def get_incident_detail(
             "MISSIONID": m.assignment_id,
             "TEAMNAME": m.team.team_name if m.team else "Rescue Unit",
             "SPECIALIZATION": m.team.specialization if m.team else "Rescue",
+            "PRIORITY": inc.severity_level or "P1",
             "STATUS": m.assignment_status,
             "STARTTIME": m.assigned_at.isoformat() if m.assigned_at else None
         } for m in inc.team_assignments

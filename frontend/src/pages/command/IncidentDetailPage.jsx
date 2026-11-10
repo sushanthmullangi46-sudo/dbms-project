@@ -151,7 +151,7 @@ export default function IncidentDetailPage() {
             <span className="text-slate-500 font-semibold uppercase tracking-wider block text-[10px]">Start Time</span>
             <div className="flex items-center space-x-1 text-slate-100 font-mono mt-0.5">
               <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>{new Date(incident.STARTTIME).toLocaleString()}</span>
+              <span>{incident.STARTTIME ? new Date(incident.STARTTIME).toLocaleString() : 'Active Now'}</span>
             </div>
           </div>
           <div>
@@ -298,7 +298,7 @@ export default function IncidentDetailPage() {
                     <td className="py-2.5 px-3 font-mono text-slate-300">{m.VEHICLETYPE || 'On Foot / Standard'}</td>
                     <td className="py-2.5 px-3"><Badge text={m.PRIORITY} /></td>
                     <td className="py-2.5 px-3"><Badge text={m.STATUS} /></td>
-                    <td className="py-2.5 px-3 font-mono text-slate-400">{new Date(m.STARTTIME).toLocaleTimeString()}</td>
+                    <td className="py-2.5 px-3 font-mono text-slate-400">{m.STARTTIME ? new Date(m.STARTTIME).toLocaleTimeString() : 'Active Now'}</td>
                   </tr>
                 ))}
               </tbody>
