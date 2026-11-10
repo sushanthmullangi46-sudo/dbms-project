@@ -13,5 +13,8 @@
     "build": "npm --prefix frontend run build",
     "preview": "npm --prefix frontend run preview",
     "test": "python -m pytest -o pythonpath=backend_py backend_py/tests"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.17.0"
   }
 }
