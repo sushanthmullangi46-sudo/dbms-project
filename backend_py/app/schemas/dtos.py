@@ -122,8 +122,10 @@ class ResourceApprovalRequest(BaseModel):
 
 class DeliveryDispatchCreate(BaseModel):
     allocation_id: int
-    transport_driver_name: str
-    vehicle_registration: str
+    transport_driver_name: Optional[str] = "Logistics Driver"
+    vehicle_registration: Optional[str] = "KA-04-TR-4421"
+    carrier_info: Optional[str] = None
+    destination: Optional[str] = None
 
 class DeliveryConfirmationRequest(BaseModel):
     quantity_received: int

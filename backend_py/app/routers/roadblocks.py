@@ -102,3 +102,4 @@ def clear_roadblock(
     roadblock.is_passable = True
     db.commit()
     return {"success": True, "message": "Roadblock marked as cleared. Route resumed."}
+

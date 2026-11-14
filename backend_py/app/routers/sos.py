@@ -113,3 +113,4 @@ def activate_sos(
         "severity": "CRITICAL",
         "tracking_url": f"/citizen/tracking?report_id={report.report_id}"
     }
+

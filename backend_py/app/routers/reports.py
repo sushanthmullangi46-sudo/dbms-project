@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime, timezone
 import math
 from app.database import get_db
 from app.models.schema import (
@@ -50,7 +51,10 @@ def submit_disaster_report(
         evacuation_needed=report_in.evacuation_needed,
         attachment_urls=report_in.attachment_urls or [],
         requested_supplies=report_in.requested_supplies or [],
-        severity=report_in.severity or "P2"
+        severity=report_in.severity or "P2",
+        latitude=report_in.latitude,
+        longitude=report_in.longitude,
+        address=report_in.address
     )
     return {
         "success": True,
@@ -253,6 +257,8 @@ def get_report_live_tracking(
             "longitude": squad_lng,
             "speed_kmh": squad_speed,
             "heading": squad_heading,
+            "accuracy": (latest_loc.accuracy if latest_loc else 10.0),
+            "is_live_gps": bool(latest_loc and (datetime.utcnow() - latest_loc.recorded_at).total_seconds() < 180),
             "last_updated": squad_recorded,
             "distance_km": dist_km,
             "eta_minutes": eta_mins,

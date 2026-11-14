@@ -539,3 +539,4 @@ CREATE INDEX idx_gps_team ON rescue_location_history(team_id);
 CREATE INDEX idx_alerts_active ON emergency_alert(is_active);
 CREATE INDEX idx_roadblocks_passable ON roadblock_report(is_passable);
 CREATE INDEX idx_evac_plan_status ON evacuation_plan(evacuation_status);
+

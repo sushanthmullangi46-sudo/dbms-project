@@ -47,18 +47,28 @@ def list_deliveries(
 @router.post("/dispatch", status_code=status.HTTP_201_CREATED)
 def dispatch_delivery(
     disp_in: DeliveryDispatchCreate,
-    current_user: UserAccount = Depends(require_role(["COORDINATOR", "DISASTER_OFFICER"])),
+    current_user: UserAccount = Depends(require_role(["COORDINATOR", "DISASTER_OFFICER", "RESOURCE_PROVIDER"])),
     db: Session = Depends(get_db)
 ):
     """
     Stage 8: Dispatch Resources to Field
     """
+    driver = disp_in.transport_driver_name or "Logistics Driver"
+    vehicle = disp_in.vehicle_registration or "KA-04-TR-4421"
+    if disp_in.carrier_info:
+        parts = disp_in.carrier_info.split("•")
+        if len(parts) >= 2:
+            vehicle = parts[0].strip()
+            driver = parts[1].strip()
+        else:
+            driver = disp_in.carrier_info
+
     delivery = WorkflowService.dispatch_delivery(
         db=db,
         allocation_id=disp_in.allocation_id,
         user=current_user,
-        driver_name=disp_in.transport_driver_name,
-        vehicle_reg=disp_in.vehicle_registration
+        driver_name=driver,
+        vehicle_reg=vehicle
     )
     return {
         "success": True,

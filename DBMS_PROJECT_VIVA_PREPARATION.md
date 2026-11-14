@@ -422,3 +422,4 @@ In emergency response operations, regulatory commissions (NDMA/SDRF) require an 
 5. **Logistics & Relief Fulfillment:** Warehouse coordinator approves resource request $\rightarrow$ Deducts `inventory.quantity_available`, creates `RESOURCE_ALLOCATION`, manifests `DELIVERY`, records delivery handover receipts.
 6. **Evacuation & Shelters:** Evacuees routed to designated relief camps $\rightarrow$ Shelter registrations enforce capacity limits (`current_occupancy <= capacity`).
 7. **Citizen Feedback & Review:** Upon rescue completion, citizen rates operational response on 4 dimensions (1-5 stars) $\rightarrow$ Inserts immutable record into `CITIZEN_FEEDBACK`, updating post-incident analytics dashboards.
+

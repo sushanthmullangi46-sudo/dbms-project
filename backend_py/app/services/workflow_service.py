@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.models.schema import (
@@ -62,11 +62,41 @@ class WorkflowService:
         evacuation_needed: bool = False,
         attachment_urls: List[str] = [],
         requested_supplies: List[Dict[str, Any]] = None,
-        severity: str = "P2"
+        severity: str = "P2",
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
+        address: Optional[str] = None,
+        location_name: Optional[str] = None
     ) -> DisasterReport:
-        location = db.query(DisasterLocation).filter(DisasterLocation.location_id == location_id).first()
-        if not location:
-            raise HTTPException(status_code=400, detail="Invalid disaster location ID")
+        # Handle exact GPS / Nominatim coordinates if provided
+        if latitude is not None and longitude is not None:
+            # Check for existing location within ~50 meters
+            existing_loc = db.query(DisasterLocation).filter(
+                (DisasterLocation.latitude.between(latitude - 0.0005, latitude + 0.0005)) &
+                (DisasterLocation.longitude.between(longitude - 0.0005, longitude + 0.0005))
+            ).first()
+            if existing_loc:
+                location = existing_loc
+                location_id = existing_loc.location_id
+            else:
+                loc_title = location_name or (address.split(',')[0] if address else f"GPS Incident Site ({latitude:.4f}, {longitude:.4f})")
+                new_loc = DisasterLocation(
+                    location_name=loc_title[:100],
+                    ward_name=(address or "Urban Disaster Sector")[:100],
+                    latitude=float(latitude),
+                    longitude=float(longitude),
+                    risk_zone="HIGH",
+                    population_density=1200
+                )
+                db.add(new_loc)
+                db.commit()
+                db.refresh(new_loc)
+                location = new_loc
+                location_id = new_loc.location_id
+        else:
+            location = db.query(DisasterLocation).filter(DisasterLocation.location_id == location_id).first()
+            if not location:
+                raise HTTPException(status_code=400, detail="Invalid disaster location ID")
 
         # Generate unique Report Reference ID (e.g., RPT-20261111-A1B2)
         ref_id = f"RPT-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"

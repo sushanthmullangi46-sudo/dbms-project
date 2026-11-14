@@ -119,3 +119,4 @@ def dismiss_emergency_alert(
     alert.is_active = False
     db.commit()
     return {"success": True, "message": "Alert dismissed and deactivated."}
+

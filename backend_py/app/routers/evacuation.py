@@ -169,3 +169,4 @@ def update_evacuation_progress(
         "message": f"Evacuation progress updated: {assignment.evacuees_transported} citizens evacuated.",
         "status": assignment.status
     }
+
