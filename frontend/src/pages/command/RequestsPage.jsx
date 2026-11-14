@@ -16,6 +16,7 @@ export default function RequestsPage() {
   const [incidents, setIncidents] = useState([]);
   const [responders, setResponders] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [resourcesList, setResourcesList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -37,7 +38,7 @@ export default function RequestsPage() {
     priority: 'CRITICAL',
     peopleAffected: 5,
     description: '',
-    resourceTypeId: 1002,
+    resourceTypeId: 3,
     quantityRequired: 2
   });
 
@@ -76,48 +77,60 @@ export default function RequestsPage() {
     Promise.all([
       api.get('/incidents?status=ACTIVE'),
       api.get('/resources/responders?availabilityStatus=AVAILABLE'),
-      api.get('/resources/vehicles?status=AVAILABLE')
-    ]).then(([incRes, respRes, vehRes]) => {
-      if (incRes.success) {
-        setIncidents(incRes.incidents);
-        if (incRes.incidents.length > 0 && !requestForm.incidentId) {
+      api.get('/resources/vehicles?status=AVAILABLE'),
+      api.get('/resources')
+    ]).then(([incRes, respRes, vehRes, resListRes]) => {
+      if (incRes && incRes.success) {
+        setIncidents(incRes.incidents || []);
+        if ((incRes.incidents || []).length > 0 && !requestForm.incidentId) {
           setRequestForm(f => ({
             ...f,
-            incidentId: incRes.incidents[0].INCIDENTID,
-            locationId: incRes.incidents[0].LOCATIONID
+            incidentId: incRes.incidents[0].INCIDENTID || incRes.incidents[0].disaster_id || incRes.incidents[0].id,
+            locationId: incRes.incidents[0].LOCATIONID || incRes.incidents[0].location_id || 1001
           }));
         }
       }
-      if (respRes.success) {
-        setResponders(respRes.responders);
-        if (respRes.responders.length > 0) {
-          setMissionForm(m => ({ ...m, responderId: respRes.responders[0].RESPONDERID }));
+      if (respRes && respRes.success) {
+        setResponders(respRes.responders || []);
+        if ((respRes.responders || []).length > 0) {
+          setMissionForm(m => ({ ...m, responderId: respRes.responders[0].RESPONDERID || respRes.responders[0].id }));
         }
       }
-      if (vehRes.success) {
-        setVehicles(vehRes.vehicles);
-        if (vehRes.vehicles.length > 0) {
-          setMissionForm(m => ({ ...m, vehicleId: vehRes.vehicles[0].VEHICLEID }));
+      if (vehRes && vehRes.success) {
+        setVehicles(vehRes.vehicles || []);
+        if ((vehRes.vehicles || []).length > 0) {
+          setMissionForm(m => ({ ...m, vehicleId: vehRes.vehicles[0].VEHICLEID || vehRes.vehicles[0].id }));
         }
       }
-    });
+      if (resListRes) {
+        const rawRes = resListRes.resources || (Array.isArray(resListRes) ? resListRes : []);
+        setResourcesList(rawRes);
+        if (rawRes.length > 0) {
+          setRequestForm(f => ({
+            ...f,
+            resourceTypeId: rawRes[0].resource_id || rawRes[0].RESOURCEID || 3
+          }));
+        }
+      }
+    }).catch(err => console.warn('Failed to load dependency dropdowns:', err));
   }, []);
 
   const handleCreateRequest = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const activeIncId = requestForm.incidentId || (incidents.length > 0 ? (incidents[0].INCIDENTID || incidents[0].id) : 1);
       const payload = {
-        incidentId: requestForm.incidentId,
-        locationId: requestForm.locationId,
+        incidentId: Number(activeIncId),
+        locationId: Number(requestForm.locationId || 1001),
         requestType: requestForm.requestType,
         priority: requestForm.priority,
-        peopleAffected: requestForm.peopleAffected,
+        peopleAffected: Number(requestForm.peopleAffected || 1),
         description: requestForm.description,
         items: [
           {
-            resourceTypeId: requestForm.resourceTypeId,
-            quantityRequired: requestForm.quantityRequired,
+            resourceTypeId: Number(requestForm.resourceTypeId || 3),
+            quantityRequired: Number(requestForm.quantityRequired || 10),
             unit: 'Units'
           }
         ]
@@ -306,18 +319,18 @@ export default function RequestsPage() {
             <select
               value={requestForm.incidentId}
               onChange={(e) => {
-                const inc = incidents.find(i => i.INCIDENTID === Number(e.target.value));
+                const inc = incidents.find(i => (i.INCIDENTID || i.id || i.disaster_id) === Number(e.target.value));
                 setRequestForm({
                   ...requestForm,
                   incidentId: e.target.value,
-                  locationId: inc ? inc.LOCATIONID : requestForm.locationId
+                  locationId: inc ? (inc.LOCATIONID || inc.location_id || 1001) : requestForm.locationId
                 });
               }}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
             >
               {incidents.map((i) => (
-                <option key={i.INCIDENTID} value={i.INCIDENTID}>
-                  #{i.INCIDENTID} - {i.INCIDENTNAME} ({i.LOCATIONNAME})
+                <option key={i.INCIDENTID || i.id || i.disaster_id} value={i.INCIDENTID || i.id || i.disaster_id}>
+                  #{i.INCIDENTID || i.id || i.disaster_id} - {i.INCIDENTNAME || i.name || i.disaster_name} ({i.LOCATIONNAME || i.location_name || 'Sector'})
                 </option>
               ))}
             </select>
@@ -368,6 +381,38 @@ export default function RequestsPage() {
               onChange={(e) => setRequestForm({ ...requestForm, peopleAffected: Number(e.target.value) })}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                Relief Supply Needed
+              </label>
+              <select
+                value={requestForm.resourceTypeId}
+                onChange={(e) => setRequestForm({ ...requestForm, resourceTypeId: Number(e.target.value) })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
+              >
+                {resourcesList.map((r) => (
+                  <option key={r.resource_id || r.RESOURCEID} value={r.resource_id || r.RESOURCEID}>
+                    {r.resource_name || r.RESOURCENAME} ({r.category || r.CATEGORY})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                Quantity Required
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={requestForm.quantityRequired}
+                onChange={(e) => setRequestForm({ ...requestForm, quantityRequired: Math.max(1, parseInt(e.target.value) || 1) })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500"
+              />
+            </div>
           </div>
 
           <div>

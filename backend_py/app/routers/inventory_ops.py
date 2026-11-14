@@ -131,27 +131,49 @@ def create_request_root(
     db: Session = Depends(get_db)
 ):
     disaster_id = data.incidentId or data.disaster_id
-    if not disaster_id:
-        inc = db.query(Disaster).filter(Disaster.status == "ACTIVE").first()
-        disaster_id = inc.disaster_id if inc else 1
+    inc = None
+    if disaster_id:
+        inc = db.query(Disaster).filter(Disaster.disaster_id == disaster_id).first()
+    if not inc:
+        inc = db.query(Disaster).filter(Disaster.status == "ACTIVE").first() or db.query(Disaster).first()
+    if not inc:
+        inc = Disaster(
+            incident_code=f"INC-{datetime.utcnow().strftime('%Y%m%d')}-EMG",
+            disaster_name="Emergency Distress Call Incident",
+            disaster_type="Distress Call",
+            location_id=data.locationId or 1001,
+            severity_level="P1" if (data.priority or "").upper() == "CRITICAL" else "P2",
+            status="ACTIVE",
+            activated_at=datetime.utcnow()
+        )
+        db.add(inc)
+        db.commit()
+        db.refresh(inc)
+
+    disaster_id = inc.disaster_id
 
     new_req = ResourceRequest(
         disaster_id=disaster_id,
         requested_by=current_user.user_id,
         priority=data.priority or "P2",
         status="PENDING",
-        notes=data.description or "Emergency field material demand",
         requested_at=datetime.utcnow()
     )
     db.add(new_req)
     db.commit()
     db.refresh(new_req)
 
+    # Get valid resource IDs from database to prevent foreign key errors
+    valid_res_ids = {r.resource_id for r in db.query(Resource.resource_id).all()}
+    fallback_res_id = min(valid_res_ids) if valid_res_ids else 1
+
     # Add request items
     if data.items:
         for item in data.items:
-            res_id = item.get("resourceTypeId") or item.get("resourceId") or 3
-            qty = item.get("quantityRequired") or item.get("quantity_requested") or 100
+            res_id = item.get("resourceTypeId") or item.get("resourceId") or item.get("resource_id") or fallback_res_id
+            if res_id not in valid_res_ids:
+                res_id = fallback_res_id
+            qty = max(1, int(item.get("quantityRequired") or item.get("quantity_requested") or 10))
             db.add(RequestItem(
                 request_id=new_req.request_id,
                 resource_id=res_id,
@@ -161,8 +183,8 @@ def create_request_root(
     else:
         db.add(RequestItem(
             request_id=new_req.request_id,
-            resource_id=3,
-            quantity_requested=100,
+            resource_id=fallback_res_id,
+            quantity_requested=50,
             quantity_approved=0
         ))
     db.commit()
@@ -174,7 +196,7 @@ def create_request_root(
         action="REQUEST_CREATED",
         actor_id=current_user.user_id,
         actor_name=current_user.full_name,
-        details=f"Created request #{new_req.request_id} for Incident #{disaster_id}"
+        details=f"Distress call logged for Incident #{disaster_id}: {data.description or 'Emergency Call'}. People affected: {data.peopleAffected or 1}"
     )
 
     return {
