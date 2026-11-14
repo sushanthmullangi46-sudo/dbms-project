@@ -15,7 +15,13 @@ import {
   MapPin,
   Search,
   Filter,
-  ArrowRight
+  ArrowRight,
+  TrendingDown,
+  Layers,
+  ShieldAlert,
+  Navigation,
+  Radio,
+  Home
 } from 'lucide-react';
 import { 
   BarChart as RechartsBar, 
@@ -56,13 +62,19 @@ export default function CommandDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [verifyingId, setVerifyingId] = useState(null);
+  const [evacPlans, setEvacPlans] = useState([]);
+  const [predictions, setPredictions] = useState([]);
+  const [hotspots, setHotspots] = useState([]);
 
   const fetchDashboardData = async () => {
     try {
-      const [dashRes, mapRes, reportsRes] = await Promise.allSettled([
+      const [dashRes, mapRes, reportsRes, evacRes, predRes, hotRes] = await Promise.allSettled([
         api.get('/dashboard'),
         api.get('/map/markers'),
-        api.get('/reports')
+        api.get('/reports'),
+        api.get('/evacuation/plans'),
+        api.get('/analytics/resource-predictions'),
+        api.get('/analytics/hotspots')
       ]);
 
       if (dashRes.status === 'fulfilled' && dashRes.value) {
@@ -78,6 +90,18 @@ export default function CommandDashboard() {
         const resVal = reportsRes.value;
         const list = Array.isArray(resVal) ? resVal : (resVal.reports || resVal.data || []);
         setCitizenReports(list);
+      }
+
+      if (evacRes.status === 'fulfilled' && evacRes.value && evacRes.value.plans) {
+        setEvacPlans(evacRes.value.plans);
+      }
+
+      if (predRes.status === 'fulfilled' && predRes.value && predRes.value.predictions) {
+        setPredictions(predRes.value.predictions);
+      }
+
+      if (hotRes.status === 'fulfilled' && hotRes.value && hotRes.value.clusters) {
+        setHotspots(hotRes.value.clusters);
       }
     } catch (err) {
       console.error('Failed to load dashboard metrics:', err);
@@ -502,6 +526,113 @@ export default function CommandDashboard() {
                 <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
               </RechartsBar>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* 4.5. Evacuation Corridors & Predictive Logistics Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Evacuation Zones & Operations */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Navigation className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Active Evacuation Corridors & Camps
+              </h3>
+            </div>
+            <span className="text-xs font-mono font-bold text-cyan-400">
+              {evacPlans.length} Zone(s) Active
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {evacPlans.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-4">No active evacuation corridors at this time.</p>
+            ) : (
+              evacPlans.map((plan) => (
+                <div key={plan.plan_id} className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-xs text-white">{plan.zone_name}</span>
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                          {plan.priority} • {plan.risk_level}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{plan.instructions}</p>
+                    </div>
+                    <span className="text-xs font-bold font-mono text-cyan-400 shrink-0">
+                      {plan.evacuated_count} / {plan.estimated_evacuees} ({plan.completion_pct}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-cyan-500 to-emerald-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, plan.completion_pct)}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                    <span className="flex items-center gap-1">
+                      <Home className="w-3 h-3 text-emerald-400" />
+                      <span>{plan.target_shelter?.shelter_name || 'Designated Shelter'}</span>
+                    </span>
+                    <span className="text-slate-500">
+                      {plan.assigned_squads?.length || 1} Squad(s) on Route
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Predictive Logistics & Burn-Rate */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <TrendingDown className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                Predictive Logistics & Burn-Rate Buffer
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-amber-400 font-mono">Real-time Forecast</span>
+          </div>
+
+          <div className="space-y-2.5">
+            {predictions.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-4">Forecasting logistics burn rates...</p>
+            ) : (
+              predictions.slice(0, 4).map((p, idx) => {
+                const isCrit = p.status_badge === 'CRITICAL_DEFICIT';
+                const isWarn = p.status_badge === 'REORDER_WARNING';
+                return (
+                  <div key={idx} className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                      <h4 className="font-bold text-slate-100">{p.resource_name}</h4>
+                      <p className="text-[11px] text-slate-400">
+                        Stock: <span className="font-mono font-semibold text-white">{p.current_available}</span> • Burn: <span className="text-cyan-400">{p.burn_rate_per_hour}/hr</span>
+                      </p>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <span className={`inline-block font-mono font-black text-xs px-2 py-0.5 rounded ${
+                        isCrit ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' :
+                        isWarn ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
+                        'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      }`}>
+                        {p.hours_remaining_buffer}h buffer
+                      </span>
+                      {p.recommended_reorder_units > 0 && (
+                        <p className="text-[10px] text-slate-500">Order +{p.recommended_reorder_units} units</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

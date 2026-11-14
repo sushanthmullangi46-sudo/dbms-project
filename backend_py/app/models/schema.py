@@ -452,3 +452,102 @@ class RescueLocationHistory(Base):
     team = relationship("ResponseTeam")
     assignment = relationship("TeamAssignment")
 
+# 29. TEAM_MEMBER (Specialist responders per squad)
+class TeamMember(Base):
+    __tablename__ = "team_member"
+    member_id = Column(Integer, primary_key=True, index=True)
+    team_id = Column(Integer, ForeignKey("response_team.team_id"), nullable=False, index=True)
+    member_name = Column(String(100), nullable=False)
+    role_title = Column(String(60), default="Rescue Specialist", nullable=False)
+    contact_phone = Column(String(50), nullable=True)
+    badge_number = Column(String(30), unique=True, nullable=False)
+    is_available = Column(Boolean, default=True, nullable=False)
+    joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    team = relationship("ResponseTeam", backref="members")
+
+# 30. EVACUATION_PLAN (Designated danger zones & route assignments)
+class EvacuationPlan(Base):
+    __tablename__ = "evacuation_plan"
+    plan_id = Column(Integer, primary_key=True, index=True)
+    disaster_id = Column(Integer, ForeignKey("disaster.disaster_id"), nullable=True, index=True)
+    location_id = Column(Integer, ForeignKey("disaster_location.location_id"), nullable=False, index=True)
+    zone_name = Column(String(100), nullable=False)
+    risk_level = Column(String(20), default="CRITICAL", nullable=False) # CRITICAL, HIGH, MODERATE
+    priority = Column(String(10), default="P1", nullable=False)
+    target_shelter_id = Column(Integer, ForeignKey("shelter.shelter_id"), nullable=True)
+    instructions = Column(Text, nullable=False)
+    evacuation_status = Column(String(30), default="ACTIVE", nullable=False) # DRAFT, ACTIVE, COMPLETED, SUSPENDED
+    estimated_evacuees = Column(Integer, default=50, nullable=False)
+    evacuated_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    disaster = relationship("Disaster")
+    location = relationship("DisasterLocation")
+    shelter = relationship("Shelter")
+
+# 31. EVACUATION_ASSIGNMENT (Tactical evacuation squad tasking)
+class EvacuationAssignment(Base):
+    __tablename__ = "evacuation_assignment"
+    assignment_id = Column(Integer, primary_key=True, index=True)
+    plan_id = Column(Integer, ForeignKey("evacuation_plan.plan_id"), nullable=False, index=True)
+    team_id = Column(Integer, ForeignKey("response_team.team_id"), nullable=False, index=True)
+    assigned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    status = Column(String(30), default="ASSIGNED", nullable=False) # ASSIGNED, EN_ROUTE, EVACUATING, COMPLETED
+    evacuees_transported = Column(Integer, default=0, nullable=False)
+
+    plan = relationship("EvacuationPlan")
+    team = relationship("ResponseTeam")
+
+# 32. EMERGENCY_ALERT (Targeted & City-wide Command Broadcasts)
+class EmergencyAlert(Base):
+    __tablename__ = "emergency_alert"
+    alert_id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(120), nullable=False)
+    alert_type = Column(String(50), nullable=False) # FLOOD_WARNING, FIRE_ALERT, EVACUATION_NOTICE, MEDICAL_EMERGENCY, ROAD_CLOSURE, GENERAL_SAFETY
+    severity = Column(String(20), default="CRITICAL", nullable=False) # CRITICAL, HIGH, MODERATE, ADVISORY
+    target_area = Column(String(120), default="City-wide", nullable=False)
+    message = Column(Text, nullable=False)
+    issued_by = Column(Integer, ForeignKey("user_account.user_id"), nullable=False)
+    issued_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    issuer = relationship("UserAccount")
+
+# 33. ROADBLOCK_REPORT (Hazardous/Restricted Passages on Ground)
+class RoadblockReport(Base):
+    __tablename__ = "roadblock_report"
+    roadblock_id = Column(Integer, primary_key=True, index=True)
+    disaster_id = Column(Integer, ForeignKey("disaster.disaster_id"), nullable=True, index=True)
+    reported_by_team_id = Column(Integer, ForeignKey("response_team.team_id"), nullable=True)
+    road_name = Column(String(120), nullable=False)
+    blockage_type = Column(String(50), nullable=False) # FLOODED_ROAD, COLLAPSED_BRIDGE, FIRE_HAZARD, DEBRIS, FALLEN_TREE, RESTRICTED_ACCESS
+    severity = Column(String(20), default="HIGH", nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    is_passable = Column(Boolean, default=False, nullable=False)
+    detour_instructions = Column(Text, nullable=True)
+    reported_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    cleared_at = Column(DateTime, nullable=True)
+
+    disaster = relationship("Disaster")
+    reporting_team = relationship("ResponseTeam")
+
+# 34. CITIZEN_FEEDBACK (Post-Rescue Operational Quality Evaluation)
+class CitizenFeedback(Base):
+    __tablename__ = "citizen_feedback"
+    feedback_id = Column(Integer, primary_key=True, index=True)
+    disaster_id = Column(Integer, ForeignKey("disaster.disaster_id"), nullable=False, index=True)
+    citizen_id = Column(Integer, ForeignKey("user_account.user_id"), nullable=False, index=True)
+    rating = Column(Integer, nullable=False) # 1 to 5 stars
+    response_speed_rating = Column(Integer, default=5, nullable=False)
+    rescue_team_rating = Column(Integer, default=5, nullable=False)
+    supplies_rating = Column(Integer, default=5, nullable=False)
+    comments = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    disaster = relationship("Disaster")
+    citizen = relationship("UserAccount")
+
+

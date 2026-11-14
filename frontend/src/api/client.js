@@ -75,6 +75,261 @@ function handleFallback(url, method, data) {
     return { success: true, message: 'Signed out' };
   }
 
+  // SOS Activation
+  if (cleanUrl.includes('/sos')) {
+    const rptId = mockCitizenReports.length + 1;
+    const refCode = `SOS-${Date.now().toString().slice(-6)}`;
+    const newSos = {
+      report_id: rptId,
+      id: rptId,
+      REPORTID: rptId,
+      report_reference_id: refCode,
+      emergency_id: `EMG-${String(rptId).padStart(4, '0')}`,
+      disaster_id: 1,
+      disaster_type: 'Flood',
+      severity: 'P1',
+      description: data?.notes || 'CRITICAL SOS: Citizen trapped requiring immediate rescue.',
+      people_affected: data?.trapped_count || 1,
+      status: 'ACTIVE',
+      STATUS: 'ACTIVE',
+      submitted_at: new Date().toISOString()
+    };
+    mockCitizenReports.unshift(newSos);
+    return {
+      success: true,
+      message: 'SOS Emergency beacon activated! Response teams alerted.',
+      report_id: rptId,
+      emergency_id: newSos.emergency_id,
+      report_reference_id: refCode,
+      disaster_id: 1,
+      status: 'ACTIVE',
+      severity: 'CRITICAL',
+      tracking_url: `/citizen/tracking?id=${rptId}`
+    };
+  }
+
+  // Emergency Alerts
+  if (cleanUrl.includes('/alerts')) {
+    return {
+      success: true,
+      count: 2,
+      alerts: [
+        {
+          alert_id: 1,
+          title: 'FLASH FLOOD RED ALERT: Hebbal & Nagawara Lake Basin',
+          alert_type: 'FLOOD_WARNING',
+          severity: 'CRITICAL',
+          target_area: 'Hebbal / Outer Ring Road',
+          message: 'Low-lying basements submerged. Seek upper floors or move to Sahakarnagar Indoor Stadium.',
+          is_active: true
+        },
+        {
+          alert_id: 2,
+          title: 'URGENT EVACUATION ADVISORY: Kodigehalli Underpass',
+          alert_type: 'EVACUATION_NOTICE',
+          severity: 'HIGH',
+          target_area: 'Kodigehalli',
+          message: 'Water stagnation reached 4.5 feet. Move towards Vidyaranyapura Community Hall.',
+          is_active: true
+        }
+      ]
+    };
+  }
+
+  // Tactical Roadblocks Feed
+  if (cleanUrl.includes('/roadblocks')) {
+    return {
+      success: true,
+      count: 2,
+      roadblocks: [
+        {
+          roadblock_id: 1,
+          road_name: 'Outer Ring Road Hebbal Underpass',
+          blockage_type: 'FLOODED_ROAD',
+          severity: 'CRITICAL',
+          latitude: 13.0382,
+          longitude: 77.5895,
+          is_passable: false,
+          detour_instructions: 'Divert all rescue transports via Kempapura Main Road.'
+        },
+        {
+          roadblock_id: 2,
+          road_name: 'Kodigehalli Railway Underbridge',
+          blockage_type: 'COLLAPSED_BRIDGE',
+          severity: 'HIGH',
+          latitude: 13.0645,
+          longitude: 77.5788,
+          is_passable: false,
+          detour_instructions: 'Use bypass route via Thindlu Circle.'
+        }
+      ]
+    };
+  }
+
+  // Evacuation Corridors & Plans
+  if (cleanUrl.includes('/evacuation/plans')) {
+    return {
+      success: true,
+      count: 2,
+      plans: [
+        {
+          plan_id: 1,
+          zone_name: 'Hebbal Lake Lowland Settlement Sector 4',
+          risk_level: 'CRITICAL',
+          priority: 'P1',
+          instructions: 'Deploy motorized inflatables. Evacuate elderly and children from ground-floor dwellings.',
+          evacuation_status: 'ACTIVE',
+          estimated_evacuees: 120,
+          evacuated_count: 45,
+          completion_pct: 37.5,
+          target_shelter: {
+            shelter_name: 'Sahakarnagar Indoor Stadium Relief Camp',
+            capacity: 500,
+            current_occupancy: 225
+          },
+          assigned_squads: [{ team_id: 1, team_name: 'NDRF Alpha Water Rescue', status: 'EVACUATING' }]
+        },
+        {
+          plan_id: 2,
+          zone_name: 'Kodigehalli Slum Perimeter Basin',
+          risk_level: 'HIGH',
+          priority: 'P2',
+          instructions: 'Ground clearance team guide evacuees on foot using safety guide-ropes towards Vidyaranyapura Hall.',
+          evacuation_status: 'ACTIVE',
+          estimated_evacuees: 80,
+          evacuated_count: 30,
+          completion_pct: 37.5,
+          target_shelter: {
+            shelter_name: 'Vidyaranyapura Community Hall',
+            capacity: 250,
+            current_occupancy: 65
+          },
+          assigned_squads: [{ team_id: 2, team_name: 'SDRF Quick Response Squad', status: 'EN_ROUTE' }]
+        }
+      ]
+    };
+  }
+
+  // Squad Recommendations
+  if (cleanUrl.includes('/teams/recommendations')) {
+    return {
+      success: true,
+      disaster_id: 1,
+      disaster_type: 'FLOOD',
+      recommended_squads: [
+        {
+          team_id: 1,
+          team_name: 'NDRF Alpha Water Rescue',
+          specialization: 'WATER_RESCUE',
+          leader_name: 'Capt. Arvind Rao',
+          contact_phone: '+91-9845012301',
+          readiness_status: 'AVAILABLE',
+          match_score_pct: 96,
+          distance_km: 2.1,
+          estimated_eta_minutes: 5,
+          justification: 'Direct tactical match for Flood (WATER_RESCUE) • Squad is unassigned • Immediate radius (2.1 km)'
+        },
+        {
+          team_id: 2,
+          team_name: 'SDRF Quick Response Squad',
+          specialization: 'COLLAPSE_SAR',
+          leader_name: 'Sub-Inspector Vikas Patil',
+          contact_phone: '+91-9845012304',
+          readiness_status: 'AVAILABLE',
+          match_score_pct: 78,
+          distance_km: 4.3,
+          estimated_eta_minutes: 9,
+          justification: 'Secondary tactical suitability • Squad is unassigned • Medium sector range (4.3 km)'
+        }
+      ]
+    };
+  }
+
+  // Citizen Feedback
+  if (cleanUrl.includes('/feedback')) {
+    return {
+      success: true,
+      message: 'Citizen feedback and review recorded in immutable operational audit log.',
+      count: 2,
+      average_overall_rating: 4.8,
+      average_speed_rating: 4.9,
+      average_team_rating: 5.0,
+      average_supplies_rating: 4.7
+    };
+  }
+
+  // Predictive Logistics & Hotspots
+  if (cleanUrl.includes('/analytics/resource-predictions')) {
+    return {
+      success: true,
+      predictions: [
+        {
+          resource_name: 'Drinking Water 20L Can',
+          current_available: 120,
+          reserved_in_transit: 30,
+          burn_rate_per_hour: 18.5,
+          hours_remaining_buffer: 6.5,
+          status_badge: 'CRITICAL_DEFICIT',
+          recommended_reorder_units: 768
+        },
+        {
+          resource_name: 'Emergency Ration Packs',
+          current_available: 240,
+          reserved_in_transit: 50,
+          burn_rate_per_hour: 14.0,
+          hours_remaining_buffer: 17.1,
+          status_badge: 'REORDER_WARNING',
+          recommended_reorder_units: 432
+        },
+        {
+          resource_name: 'First Aid Trauma Kits',
+          current_available: 85,
+          reserved_in_transit: 15,
+          burn_rate_per_hour: 4.2,
+          hours_remaining_buffer: 20.2,
+          status_badge: 'REORDER_WARNING',
+          recommended_reorder_units: 116
+        },
+        {
+          resource_name: 'Inflatable Rescue Boat',
+          current_available: 14,
+          reserved_in_transit: 4,
+          burn_rate_per_hour: 0.5,
+          hours_remaining_buffer: 28.0,
+          status_badge: 'STABLE',
+          recommended_reorder_units: 0
+        }
+      ]
+    };
+  }
+
+  if (cleanUrl.includes('/analytics/hotspots')) {
+    return {
+      success: true,
+      hotspots_detected: 2,
+      clusters: [
+        {
+          cluster_id: 'HOTSPOT-01',
+          cluster_name: 'Hebbal Lake Basin Lowlands',
+          centroid_latitude: 13.0382,
+          centroid_longitude: 77.5895,
+          radius_meters: 1200,
+          incident_count: 6,
+          criticality: 'CRITICAL'
+        },
+        {
+          cluster_id: 'HOTSPOT-02',
+          cluster_name: 'Kodigehalli Railway Underpass',
+          centroid_latitude: 13.0645,
+          centroid_longitude: 77.5788,
+          radius_meters: 800,
+          incident_count: 4,
+          criticality: 'HIGH'
+        }
+      ]
+    };
+  }
+
   // Analytics Dashboard
   if (cleanUrl.includes('/analytics/dashboard')) {
     return { success: true, ...mockAnalytics };

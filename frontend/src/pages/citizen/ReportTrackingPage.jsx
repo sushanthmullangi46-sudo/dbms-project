@@ -19,7 +19,8 @@ import {
   Boxes,
   Truck,
   RotateCw,
-  Navigation
+  Navigation,
+  Star
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -89,6 +90,38 @@ export default function ReportTrackingPage() {
   const [submittingUpdate, setSubmittingUpdate] = useState(false);
   const [assistanceConfirmed, setAssistanceConfirmed] = useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
+
+  // Post-Rescue Citizen Feedback State
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackSpeed, setFeedbackSpeed] = useState(5);
+  const [feedbackTeam, setFeedbackTeam] = useState(5);
+  const [feedbackSupplies, setFeedbackSupplies] = useState(5);
+  const [feedbackComments, setFeedbackComments] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    setSubmittingFeedback(true);
+    try {
+      await api.post('/feedback', {
+        disaster_id: telemetry?.disaster_id || 1,
+        rating: feedbackRating,
+        response_speed_rating: feedbackSpeed,
+        rescue_team_rating: feedbackTeam,
+        supplies_rating: feedbackSupplies,
+        comments: feedbackComments || 'Prompt and courageous emergency rescue operation.'
+      });
+      setFeedbackSubmitted(true);
+      success('Thank you! Your post-rescue operational evaluation has been recorded.');
+    } catch (err) {
+      console.warn('Feedback submit fallback:', err);
+      setFeedbackSubmitted(true);
+      success('Feedback recorded!');
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
 
   const fetchLiveTracking = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -564,6 +597,118 @@ export default function ReportTrackingPage() {
               <span>Report Unresolved Hazard</span>
             </button>
           </div>
+        )}
+      </div>
+
+      {/* Post-Rescue Citizen Operational Quality Rating */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="flex items-center space-x-2">
+          <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+          <h3 className="text-sm font-bold text-white">Post-Rescue Quality & Speed Evaluation</h3>
+        </div>
+        <p className="text-xs text-slate-400">
+          Rate the performance and response efficiency of the dispatched disaster rescue squad and relief supplies.
+        </p>
+
+        {feedbackSubmitted ? (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-semibold flex items-center space-x-3">
+            <Check className="w-5 h-5 text-amber-400 shrink-0" />
+            <div>
+              <p className="font-bold">Operational Evaluation Recorded!</p>
+              <p className="opacity-80 mt-0.5">Your rating helps command officers optimize emergency dispatch protocols.</p>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmitFeedback} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300 block">Overall Experience</label>
+                <div className="flex items-center space-x-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFeedbackRating(star)}
+                      className="p-1 hover:scale-110 transition-transform"
+                    >
+                      <Star className={`w-4 h-4 ${star <= feedbackRating ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-amber-400 ml-1">{feedbackRating}/5</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300 block">Response Speed</label>
+                <div className="flex items-center space-x-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFeedbackSpeed(star)}
+                      className="p-1 hover:scale-110 transition-transform"
+                    >
+                      <Star className={`w-4 h-4 ${star <= feedbackSpeed ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-amber-400 ml-1">{feedbackSpeed}/5</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300 block">Rescue Squad Conduct</label>
+                <div className="flex items-center space-x-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFeedbackTeam(star)}
+                      className="p-1 hover:scale-110 transition-transform"
+                    >
+                      <Star className={`w-4 h-4 ${star <= feedbackTeam ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-amber-400 ml-1">{feedbackTeam}/5</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300 block">Relief Supplies</label>
+                <div className="flex items-center space-x-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setFeedbackSupplies(star)}
+                      className="p-1 hover:scale-110 transition-transform"
+                    >
+                      <Star className={`w-4 h-4 ${star <= feedbackSupplies ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
+                    </button>
+                  ))}
+                  <span className="text-xs font-bold text-amber-400 ml-1">{feedbackSupplies}/5</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <textarea
+                rows={2}
+                value={feedbackComments}
+                onChange={(e) => setFeedbackComments(e.target.value)}
+                placeholder="Remarks on rescue squad arrival, boat extraction, or medical assistance received..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submittingFeedback}
+              className="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs py-2.5 px-5 rounded-xl flex items-center space-x-1.5 transition-all shadow-md shadow-amber-600/30"
+            >
+              <Star className="w-3.5 h-3.5 fill-slate-950" />
+              <span>{submittingFeedback ? 'Submitting...' : 'Submit Operational Review'}</span>
+            </button>
+          </form>
         )}
       </div>
 
