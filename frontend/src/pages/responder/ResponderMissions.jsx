@@ -102,7 +102,7 @@ export default function ResponderMissions() {
   const [squadCoords, setSquadCoords] = useState(null);
   const gpsWatchId = useRef(null);
 
-  // Swiggy-Style Automated Real Road Navigation & Timeline
+  // Automated Real Road Navigation & Tactical Operational Timeline
   const [roadRoute, setRoadRoute] = useState([]);
   const [routeDistanceKm, setRouteDistanceKm] = useState(4.8);
   const [routeDurationMin, setRouteDurationMin] = useState(8);
@@ -253,13 +253,13 @@ export default function ResponderMissions() {
     }
   };
 
-  // Swiggy Delivery Boy Automated Live Mission Simulator
-  const startSwiggySimulation = () => {
+  // Automated Tactical Mission Progression Simulator
+  const startMissionTimeline = () => {
     if (simRunning) {
       // Pause
       if (simIntervalRef.current) clearInterval(simIntervalRef.current);
       setSimRunning(false);
-      success('Swiggy-style live tracking paused.');
+      success('Mission timeline progression paused.');
       return;
     }
 
@@ -270,7 +270,7 @@ export default function ResponderMissions() {
 
     const mId = selectedMission.MISSIONID || selectedMission.mission_id || selectedMission.id;
     setSimRunning(true);
-    success('🚀 Swiggy live navigation started: Vehicle tracking along real road network!');
+    success('🚀 Tactical mission timeline started: Vehicle tracking along real road network!');
 
     // Mobilize squad
     api.put(`/responder/missions/${mId}/status`, { status: 'DISPATCHED', notes: 'Automated squad mobilization' })
@@ -338,7 +338,7 @@ export default function ResponderMissions() {
     }, intervalMs);
   };
 
-  const resetSwiggySimulation = () => {
+  const resetMissionTimeline = () => {
     if (simIntervalRef.current) clearInterval(simIntervalRef.current);
     setSimRunning(false);
     setSimWaypointIdx(0);
@@ -347,7 +347,7 @@ export default function ResponderMissions() {
     }
     setRemainingDist(routeDistanceKm);
     setRemainingEta(routeDurationMin);
-    success('Simulation reset to depot base.');
+    success('Mission timeline reset to base depot.');
   };
 
   const handleClaimIncident = async (incident) => {
@@ -744,18 +744,18 @@ export default function ResponderMissions() {
                   </div>
 
                   <div className="flex flex-wrap gap-2.5">
-                    {/* Swiggy-Style Automated Real Road Navigation & Timeline */}
+                    {/* Automated Tactical Mission Progression & Timeline */}
                     <div className="bg-slate-950 p-4 rounded-xl border border-cyan-500/30 space-y-3 w-full">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                           <div className="flex items-center space-x-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
                             <span className="font-bold text-xs uppercase tracking-wider text-cyan-300">
-                              Swiggy-Style Live Road Navigation & Automated Timeline
+                              Tactical Mission Progression & Operational Timeline
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            Automates mission stages step-by-step along real streets (Dispatched → En Route → On Scene → Rescued → Completed)
+                            Automated operational lifecycle (Dispatched → En Route → On Scene → Rescued → Completed)
                           </p>
                         </div>
 
@@ -781,7 +781,7 @@ export default function ResponderMissions() {
                           {/* Start/Pause Simulation Button */}
                           <button
                             type="button"
-                            onClick={startSwiggySimulation}
+                            onClick={startMissionTimeline}
                             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-lg ${
                               simRunning
                                 ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/30'
@@ -789,12 +789,12 @@ export default function ResponderMissions() {
                             }`}
                           >
                             {simRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                            <span>{simRunning ? 'Pause Timeline' : '▶ Start Swiggy Live Mission'}</span>
+                            <span>{simRunning ? 'Pause Timeline' : '▶ Start Mission Timeline'}</span>
                           </button>
 
                           <button
                             type="button"
-                            onClick={resetSwiggySimulation}
+                            onClick={resetMissionTimeline}
                             className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
                             title="Reset to Base"
                           >
@@ -922,7 +922,10 @@ export default function ResponderMissions() {
                   <div className="h-72 w-full rounded-xl overflow-hidden border border-slate-800 relative z-0">
                     {Number.isFinite(targetLat) && Number.isFinite(targetLng) ? (
                       <MapContainer center={[targetLat, targetLng]} zoom={13} scrollWheelZoom={false} className="h-full w-full">
-                        <TileLayer attribution='&copy; <a href="https://carto.com/">CARTO</a>' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
                         
                         {/* Realistic Road Route Polyline */}
                         {roadRoute.length > 1 && (

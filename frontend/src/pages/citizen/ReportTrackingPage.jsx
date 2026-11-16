@@ -471,7 +471,7 @@ export default function ReportTrackingPage() {
 
       {/* Live Tactical GPS Leaflet Map */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-        {/* Swiggy Delivery Boy Style Tracking Bar */}
+        {/* Tactical Squad Live GPS Operational Telemetry Bar */}
         <div className="bg-slate-950 p-4 rounded-xl border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xl shrink-0">
@@ -545,8 +545,8 @@ export default function ReportTrackingPage() {
             className="h-full w-full"
           >
             <TileLayer
-              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             {/* Citizen Emergency Pin */}
             <Marker position={[targetLat, targetLng]} icon={emergencyPinIcon}>
