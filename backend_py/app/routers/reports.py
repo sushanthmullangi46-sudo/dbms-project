@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.schema import (
     DisasterReport, ReportUpdate, DisasterLocation, UserAccount,
     TeamAssignment, ResponseTeam, ResourceRequest, RequestItem,
-    ResourceAllocation, Delivery, RescueLocationHistory
+    ResourceAllocation, Delivery, DeliveryItem, RescueLocationHistory
 )
 from app.schemas.dtos import DisasterReportCreate, ReportUpdateCreate, AssistanceRequestCreate
 from app.auth.security import get_current_user
@@ -88,9 +88,9 @@ def list_reports(
     results = []
     for r in reports:
         loc_name = r.location.location_name if r.location else "Unknown"
-        lat = r.location.latitude if r.location else 13.0358
-        lng = r.location.longitude if r.location else 77.5970
-        ward = r.location.ward_name if r.location else "North Sector"
+        lat = r.location.latitude if r.location else None
+        lng = r.location.longitude if r.location else None
+        ward = r.location.ward_name if r.location else None
         sub_time = r.submitted_at.isoformat() if hasattr(r.submitted_at, 'isoformat') else str(r.submitted_at)
 
         results.append({
@@ -114,7 +114,7 @@ def list_reports(
             "lng": lng,
             "latitude": lat,
             "longitude": lng,
-            "risk_zone": r.location.risk_zone if r.location else "MODERATE",
+            "risk_zone": r.location.risk_zone if r.location else None,
             "submitted_at": sub_time,
             "linked_incident_id": r.disaster_id
         })
@@ -196,11 +196,13 @@ def get_report_live_tracking(
     report = db.query(DisasterReport).filter(DisasterReport.report_id == report_id).first()
     if not report:
         raise HTTPException(status_code=404, detail="Disaster report not found")
+    if current_user.role.role_name == "CITIZEN" and report.reporter_user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Access denied to private report")
 
-    target_lat = report.location.latitude if report.location else 13.0358
-    target_lng = report.location.longitude if report.location else 77.5970
-    loc_name = report.location.location_name if report.location else "Sector Emergency Site"
-    address = report.location.address if report.location else "Bangalore North Division"
+    target_lat = report.location.latitude if report.location else None
+    target_lng = report.location.longitude if report.location else None
+    loc_name = report.location.location_name if report.location else None
+    address = report.location.address if report.location else None
 
     # 1. Assigned Rescue Team & Tactical Telemetry
     assignment = None
@@ -218,11 +220,11 @@ def get_report_live_tracking(
             (RescueLocationHistory.team_id == assignment.team_id)
         ).order_by(RescueLocationHistory.recorded_at.desc()).first()
 
-        squad_lat = latest_loc.latitude if latest_loc else (target_lat - 0.024)
-        squad_lng = latest_loc.longitude if latest_loc else (target_lng - 0.018)
-        squad_speed = latest_loc.speed if latest_loc else 38.5
-        squad_heading = latest_loc.heading if latest_loc else 45.0
-        squad_recorded = latest_loc.recorded_at.isoformat() if latest_loc else assignment.assigned_at.isoformat()
+        squad_lat = latest_loc.latitude if latest_loc else None
+        squad_lng = latest_loc.longitude if latest_loc else None
+        squad_speed = latest_loc.speed if latest_loc else None
+        squad_heading = latest_loc.heading if latest_loc else None
+        squad_recorded = latest_loc.recorded_at.isoformat() if latest_loc else None
 
         # Fetch recent path history (up to 20 coordinates)
         history_points = db.query(RescueLocationHistory).filter(
@@ -231,37 +233,31 @@ def get_report_live_tracking(
         ).order_by(RescueLocationHistory.recorded_at.asc()).limit(20).all()
 
         route_trail = [[pt.latitude, pt.longitude] for pt in history_points]
-        if not route_trail:
-            route_trail = [
-                [target_lat - 0.045, target_lng - 0.035],
-                [target_lat - 0.024, target_lng - 0.018],
-                [squad_lat, squad_lng]
-            ]
-
-        dist_km = haversine_km(squad_lat, squad_lng, target_lat, target_lng)
-        # Assuming avg emergency vehicle speed of 35 km/h in urban traffic
-        eta_mins = max(1, int(round((dist_km / 35.0) * 60))) if assignment.assignment_status not in ("ON_SCENE", "ARRIVED", "RESCUE_IN_PROGRESS", "COMPLETED") else 0
+        has_positions = all(value is not None for value in (squad_lat, squad_lng, target_lat, target_lng))
+        dist_km = haversine_km(squad_lat, squad_lng, target_lat, target_lng) if has_positions else None
 
         team_data = {
             "assigned": True,
             "assignment_id": assignment.assignment_id,
             "mission_id": assignment.assignment_id,
-            "team_id": team.team_id if team else 1,
-            "team_name": team.team_name if team else "NDRF Rapid SAR Squad",
-            "leader_name": team.leader_name if team else "Capt. Arvind Rao",
-            "contact_phone": team.contact_phone if team else "+91-9845011111",
-            "specialization": team.specialization if team else "WATER_RESCUE",
+            "team_id": team.team_id if team else None,
+            "team_name": team.team_name if team else None,
+            "leader_name": team.leader_name if team else None,
+            "contact_phone": team.contact_phone if team else None,
+            "specialization": team.specialization if team else None,
             "status": assignment.assignment_status,
             "assignment_status": assignment.assignment_status,
             "latitude": squad_lat,
             "longitude": squad_lng,
             "speed_kmh": squad_speed,
             "heading": squad_heading,
-            "accuracy": (latest_loc.accuracy if latest_loc else 10.0),
+            "accuracy": latest_loc.accuracy if latest_loc else None,
             "is_live_gps": bool(latest_loc and (datetime.utcnow() - latest_loc.recorded_at).total_seconds() < 180),
             "last_updated": squad_recorded,
             "distance_km": dist_km,
-            "eta_minutes": eta_mins,
+            "distance_basis": "STRAIGHT_LINE" if dist_km is not None else None,
+            "eta_minutes": None,
+            "routing_available": False,
             "route_trail": route_trail,
             "timestamps": {
                 "assigned_at": assignment.assigned_at.isoformat() if assignment.assigned_at else None,
@@ -298,7 +294,10 @@ def get_report_live_tracking(
                 # Check delivery
                 deliv = None
                 if alloc:
-                    deliv = db.query(Delivery).filter(Delivery.disaster_id == report.disaster_id).first()
+                    deliv = db.query(Delivery).join(DeliveryItem).filter(
+                        Delivery.disaster_id == report.disaster_id,
+                        DeliveryItem.resource_id == item.resource_id
+                    ).order_by(Delivery.delivery_id.desc()).first()
 
                 derived_status = "REQUESTED"
                 if deliv and deliv.delivery_status == "DELIVERED":
@@ -372,9 +371,51 @@ def request_assistance_for_report(
     )
     db.add(upd)
     db.commit()
+
+    # Automatically create a persistent ResourceRequest and RequestItems so Logistics Coordinator receives it
+    disaster_id = report.disaster_id
+    if disaster_id:
+        req_type_upper = (req_in.request_type or "").upper()
+        res_req = ResourceRequest(
+            disaster_id=disaster_id,
+            requested_by=current_user.user_id,
+            status="PENDING_APPROVAL",
+            priority="P1" if "MED" in req_type_upper or "EVAC" in req_type_upper else "P2",
+            requested_at=datetime.utcnow()
+        )
+        db.add(res_req)
+        db.commit()
+        db.refresh(res_req)
+
+        count = max(1, req_in.quantity_or_people or 4)
+        items_to_create = []
+
+        if "MED" in req_type_upper:
+            items_to_create.append((5, max(2, count // 2)))   # First Aid Kits
+            items_to_create.append((8, max(5, count * 3)))   # Emergency Medicines & IV Fluids
+        elif "EVAC" in req_type_upper or "BOAT" in req_type_upper:
+            items_to_create.append((1, max(1, (count + 5) // 6))) # Rescue Boats
+            items_to_create.append((7, count))               # Warm Blankets
+        elif "SHELTER" in req_type_upper or "TENT" in req_type_upper:
+            items_to_create.append((9, max(1, (count + 3) // 4))) # Emergency Tents
+            items_to_create.append((7, count))               # Blankets
+        else:
+            # Default Food & Water
+            items_to_create.append((4, count * 2))           # Potable Water Cans
+            items_to_create.append((3, count * 2))           # Food Rations
+
+        for r_id, q in items_to_create:
+            db.add(RequestItem(
+                request_id=res_req.request_id,
+                resource_id=r_id,
+                quantity_requested=q,
+                quantity_approved=0
+            ))
+        db.commit()
+
     return {
         "success": True,
-        "message": "Assistance request logged with disaster command center",
+        "message": "Assistance request logged and routed directly to Logistics Coordinator approval queue",
         "report_id": report_id,
         "request_type": req_in.request_type
     }

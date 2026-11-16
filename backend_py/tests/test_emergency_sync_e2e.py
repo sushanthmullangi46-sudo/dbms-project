@@ -154,7 +154,8 @@ class TestEmergencySynchronizationE2E(unittest.TestCase):
         loc_data = res_loc.json()
         self.assertEqual(loc_data["current_position"]["latitude"], 13.0210)
         self.assertGreater(loc_data["distance_km"], 0)
-        self.assertGreaterEqual(loc_data["eta_minutes"], 1)
+        self.assertIsNone(loc_data["eta_minutes"], "Do not invent an ETA without a road-routing provider")
+        self.assertFalse(loc_data["routing_available"])
 
         # State: ON_SCENE & RESCUE_IN_PROGRESS
         res_scene = self.client.put(f"/api/v1/responder/missions/{mission_id}/status", json={"status": "ON_SCENE"}, headers=self.rescue_headers)

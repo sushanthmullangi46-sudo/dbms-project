@@ -5,6 +5,12 @@ class Settings:
     PROJECT_NAME: str = "Urban Disaster Relief and Resource Management System (UDRRMS)"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    CORS_ORIGINS: list[str] = [
+        origin.strip() for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000"
+        ).split(",") if origin.strip()
+    ]
     
     JWT_SECRET: str = os.getenv("JWT_SECRET", "udrrms_super_secure_secret_key_disaster_ops_2026_jwt")
     ALGORITHM: str = "HS256"

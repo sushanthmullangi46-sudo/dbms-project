@@ -33,7 +33,8 @@ export default function CitizenDashboard() {
   const [sosTrappedCount, setSosTrappedCount] = useState(1);
   const [sosMedical, setSosMedical] = useState(true);
   const [sosNotes, setSosNotes] = useState('CRITICAL: Flood water entering dwelling. Immediate boat evacuation required.');
-  const [currentCoords, setCurrentCoords] = useState({ lat: 13.0382, lng: 77.5895 });
+  const [currentCoords, setCurrentCoords] = useState(null);
+  const [sosError, setSosError] = useState('');
 
   useEffect(() => {
     fetchMyReports();
@@ -45,7 +46,7 @@ export default function CitizenDashboard() {
             lng: Number(pos.coords.longitude.toFixed(5))
           });
         },
-        _err => console.log('Using default Bangalore coordinates')
+        () => setCurrentCoords(null)
       );
     }
   }, []);
@@ -66,7 +67,12 @@ export default function CitizenDashboard() {
   };
 
   const triggerInstantSOS = async () => {
+    if (!currentCoords) {
+      setSosError('GPS coordinates are unavailable. Allow location access and try again, or submit a standard emergency report with a location.');
+      return;
+    }
     setSosSubmitting(true);
+    setSosError('');
     try {
       const res = await api.post('/sos/activate', {
         latitude: currentCoords.lat,
@@ -83,12 +89,7 @@ export default function CitizenDashboard() {
         navigate(`/citizen/tracking?id=${reportId}`);
       }, 1500);
     } catch (err) {
-      console.error('SOS Activation error:', err);
-      // Fallback redirect
-      setTimeout(() => {
-        setShowSosModal(false);
-        navigate('/citizen/tracking?id=1');
-      }, 1200);
+      setSosError(err.message || 'SOS could not be saved. Please retry or submit a standard emergency report.');
     } finally {
       setSosSubmitting(false);
     }
@@ -329,13 +330,15 @@ export default function CitizenDashboard() {
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-2">
                   <div className="flex justify-between text-slate-400">
                     <span>GPS Telemetry:</span>
-                    <span className="font-mono text-cyan-400 font-bold">{currentCoords.lat}, {currentCoords.lng}</span>
+                    <span className="font-mono text-cyan-400 font-bold">{currentCoords ? `${currentCoords.lat}, ${currentCoords.lng}` : 'Location unavailable'}</span>
                   </div>
                   <div className="flex justify-between text-slate-400">
                     <span>Priority Level:</span>
                     <span className="font-bold text-rose-400">P1 - CRITICAL RESCUE</span>
                   </div>
                 </div>
+
+                {sosError && <p role="alert" className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-200">{sosError}</p>}
 
                 <div className="space-y-3">
                   <div>

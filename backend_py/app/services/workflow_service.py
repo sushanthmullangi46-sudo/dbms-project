@@ -85,8 +85,7 @@ class WorkflowService:
                     ward_name=(address or "Urban Disaster Sector")[:100],
                     latitude=float(latitude),
                     longitude=float(longitude),
-                    risk_zone="HIGH",
-                    population_density=1200
+                    risk_zone="HIGH"
                 )
                 db.add(new_loc)
                 db.commit()
@@ -391,6 +390,10 @@ class WorkflowService:
             raise HTTPException(status_code=404, detail="Active incident not found")
         if disaster.status == "CLOSED":
             raise HTTPException(status_code=400, detail="Cannot request resources for a closed incident")
+        if not items:
+            raise HTTPException(status_code=422, detail="A resource request must contain at least one item")
+        if any(int(item.get("quantity_requested", 0)) <= 0 for item in items):
+            raise HTTPException(status_code=422, detail="Requested quantities must be positive")
 
         req = ResourceRequest(
             disaster_id=disaster_id,
@@ -399,19 +402,24 @@ class WorkflowService:
             priority=priority,
             requested_at=datetime.utcnow()
         )
-        db.add(req)
-        db.commit()
-        db.refresh(req)
-
-        for itm in items:
-            req_item = RequestItem(
-                request_id=req.request_id,
-                resource_id=itm["resource_id"],
-                quantity_requested=itm["quantity_requested"],
-                quantity_approved=0
-            )
-            db.add(req_item)
-        db.commit()
+        try:
+            db.add(req)
+            db.flush()
+            for itm in items:
+                if not db.query(Resource).filter(Resource.resource_id == itm["resource_id"]).first():
+                    raise HTTPException(status_code=404, detail=f"Resource {itm['resource_id']} not found")
+                db.add(RequestItem(
+                    request_id=req.request_id,
+                    resource_id=itm["resource_id"],
+                    quantity_requested=itm["quantity_requested"],
+                    quantity_approved=0
+                ))
+            db.flush()
+            db.commit()
+            db.refresh(req)
+        except Exception:
+            db.rollback()
+            raise
 
         AuditService.log_workflow_event(
             db, disaster_id, "RESOURCE_REQUESTED", user_id,
@@ -437,12 +445,21 @@ class WorkflowService:
         req = db.query(ResourceRequest).filter(ResourceRequest.request_id == request_id).first()
         if not req:
             raise HTTPException(status_code=404, detail="Resource request not found")
+        if req.status not in ("PENDING_APPROVAL", "PARTIALLY_APPROVED"):
+            raise HTTPException(status_code=409, detail=f"Request cannot be allocated while it is {req.status}")
+        if not approved_items:
+            raise HTTPException(status_code=422, detail="At least one approved item is required")
+        resource_ids = [item.get("resource_id") for item in approved_items]
+        if len(resource_ids) != len(set(resource_ids)):
+            raise HTTPException(status_code=422, detail="A resource may appear only once per allocation request")
 
         allocations = []
         try:
             for item in approved_items:
                 res_id = item["resource_id"]
                 qty = item["approved_quantity"]
+                if not isinstance(qty, int) or qty <= 0:
+                    raise HTTPException(status_code=422, detail="Approved quantities must be positive integers")
 
                 # Atomic warehouse inventory check
                 inv = db.query(Inventory).filter(
@@ -466,8 +483,11 @@ class WorkflowService:
                     RequestItem.request_id == request_id,
                     RequestItem.resource_id == res_id
                 ).first()
-                if req_itm:
-                    req_itm.quantity_approved += qty
+                if not req_itm:
+                    raise HTTPException(status_code=400, detail=f"Resource {res_id} is not part of this request")
+                if req_itm.quantity_approved + qty > req_itm.quantity_requested:
+                    raise HTTPException(status_code=400, detail=f"Approved quantity exceeds the request for resource {res_id}")
+                req_itm.quantity_approved += qty
 
                 # Create allocation record
                 disp_ref = f"DSP-{uuid.uuid4().hex[:8].upper()}"
@@ -484,7 +504,7 @@ class WorkflowService:
                 db.add(alloc)
                 allocations.append(alloc)
 
-            req.status = "APPROVED"
+            req.status = "APPROVED" if all(item.quantity_approved >= item.quantity_requested for item in req.items) else "PARTIALLY_APPROVED"
             db.commit()
 
             AuditService.log_workflow_event(
@@ -515,6 +535,12 @@ class WorkflowService:
             raise HTTPException(status_code=404, detail="Response team not found")
         if team.readiness_status != "AVAILABLE":
             raise HTTPException(status_code=400, detail=f"Team '{team.team_name}' is currently {team.readiness_status}")
+        active_assignment = db.query(TeamAssignment).filter(
+            TeamAssignment.disaster_id == disaster_id,
+            TeamAssignment.assignment_status.notin_(["COMPLETED", "CANCELLED"])
+        ).first()
+        if active_assignment:
+            raise HTTPException(status_code=409, detail="Incident already has an active response team assignment")
 
         assignment = TeamAssignment(
             disaster_id=disaster_id,
@@ -619,20 +645,22 @@ class WorkflowService:
             delivery_status="DISPATCHED",
             dispatched_at=datetime.utcnow()
         )
-        db.add(delivery)
-        db.commit()
-        db.refresh(delivery)
-
-        # Add item
-        deliv_item = DeliveryItem(
-            delivery_id=delivery.delivery_id,
-            resource_id=alloc.resource_id,
-            quantity_dispatched=alloc.allocated_quantity,
-            quantity_received=0
-        )
-        db.add(deliv_item)
-        alloc.allocation_status = "DISPATCHED"
-        db.commit()
+        try:
+            db.add(delivery)
+            db.flush()
+            db.add(DeliveryItem(
+                delivery_id=delivery.delivery_id,
+                resource_id=alloc.resource_id,
+                quantity_dispatched=alloc.allocated_quantity,
+                quantity_received=0
+            ))
+            alloc.allocation_status = "DISPATCHED"
+            db.flush()
+            db.commit()
+            db.refresh(delivery)
+        except Exception:
+            db.rollback()
+            raise
 
         AuditService.log_workflow_event(
             db, req.disaster_id, "RESOURCE_DISPATCHED", user.user_id,
@@ -661,10 +689,20 @@ class WorkflowService:
         if not item:
             raise HTTPException(status_code=400, detail="No items associated with delivery")
 
+        if not isinstance(quantity_received, int) or not isinstance(quantity_damaged, int) or quantity_received < 0 or quantity_damaged < 0:
+            raise HTTPException(status_code=422, detail="Received and damaged quantities must be non-negative integers")
+        if quantity_received + quantity_damaged > item.quantity_dispatched:
+            raise HTTPException(status_code=400, detail="Received and damaged quantities cannot exceed the dispatched quantity")
+        previous_reconciled = item.quantity_received + item.quantity_damaged
+        new_reconciled = quantity_received + quantity_damaged
+        if new_reconciled <= previous_reconciled:
+            raise HTTPException(status_code=409, detail="Receipt update must account for additional dispatched quantity")
+
         item.quantity_received = quantity_received
         item.quantity_damaged = quantity_damaged
-        delivery.delivery_status = "DELIVERED"
-        delivery.delivered_at = datetime.utcnow()
+        is_complete = new_reconciled == item.quantity_dispatched
+        delivery.delivery_status = "DELIVERED" if is_complete else "PARTIALLY_DELIVERED"
+        delivery.delivered_at = datetime.utcnow() if is_complete else None
         delivery.receiver_name = receiver_name
         delivery.proof_of_delivery_note = proof_note
 
@@ -673,8 +711,9 @@ class WorkflowService:
             Inventory.warehouse_id == delivery.warehouse_id,
             Inventory.resource_id == item.resource_id
         ).first()
-        if inv:
-            inv.quantity_reserved = max(0, inv.quantity_reserved - item.quantity_dispatched)
+        if not inv or inv.quantity_reserved < new_reconciled - previous_reconciled:
+            raise HTTPException(status_code=409, detail="Reserved inventory does not match the outstanding delivery quantity")
+        inv.quantity_reserved -= new_reconciled - previous_reconciled
 
         db.commit()
         db.refresh(delivery)

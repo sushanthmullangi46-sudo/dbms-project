@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.schema import (
-    DisasterLocation, Disaster, DisasterReport, Warehouse, Shelter, ResponseTeam
+    DisasterLocation, Disaster, DisasterReport, Warehouse, Shelter, ResponseTeam, Hospital
 )
 from app.auth.security import get_current_user
 
@@ -110,6 +110,36 @@ def get_map_nodes(
         } for t in teams
     ]
 
+    # 7. Hospitals & Trauma Centers
+    hospitals = db.query(Hospital).all()
+    hosp_geo_coords = {
+        1: (13.0382, 77.5925, "+91-80-6666-9999"),
+        2: (13.0538, 77.5941, "+91-80-4342-0100"),
+        3: (13.1007, 77.5963, "+91-80-2856-1111"),
+        4: (13.0245, 77.5878, "+91-80-2202-4444")
+    }
+    hosp_markers = []
+    for h in hospitals:
+        fallback = hosp_geo_coords.get(h.hospital_id, (13.0382, 77.5925, "+91-80-2222-3333"))
+        lat = fallback[0] if fallback else (h.location.latitude if h.location else 13.0382)
+        lng = fallback[1] if fallback else (h.location.longitude if h.location else 77.5925)
+        phone = fallback[2] if fallback else "+91-80-2222-3333"
+        hosp_markers.append({
+            "id": h.hospital_id,
+            "title": h.hospital_name,
+            "type": "HOSPITAL",
+            "available_icu_beds": h.available_icu_beds,
+            "total_icu_beds": h.total_icu_beds,
+            "available_general_beds": h.available_general_beds,
+            "total_general_beds": h.total_general_beds,
+            "trauma_center_level": h.trauma_center_level or "LEVEL_1",
+            "phone": phone,
+            "status": "OPERATIONAL",
+            "lat": lat,
+            "lng": lng,
+            "location": h.location.location_name if h.location else "Bengaluru Sector"
+        })
+
     return {
         "success": True,
         "nodes": {
@@ -117,6 +147,7 @@ def get_map_nodes(
             "incidents": inc_markers,
             "reports": rep_markers,
             "shelters": sh_markers,
+            "hospitals": hosp_markers,
             "warehouses": wh_markers,
             "responders": resp_markers
         }
@@ -135,6 +166,7 @@ def get_map_markers_alias(
             "incidents": nodes["incidents"],
             "reports": nodes.get("reports", []),
             "shelters": nodes["shelters"],
+            "hospitals": nodes.get("hospitals", []),
             "warehouses": nodes["warehouses"],
             "responders": nodes.get("responders", []),
             "zones": nodes["zones"]

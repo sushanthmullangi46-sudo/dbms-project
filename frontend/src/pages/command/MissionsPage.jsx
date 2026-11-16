@@ -102,7 +102,7 @@ export default function MissionsPage() {
       });
 
       if (res.success) {
-        success('Resource locked & allocated via Oracle ALLOCATE_RESOURCE.');
+        success('Resource request recorded and sent to the logistics approval queue.');
         setIsAllocateModalOpen(false);
         fetchMissions();
       }
@@ -221,7 +221,7 @@ export default function MissionsPage() {
                         className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-brand-600 text-slate-200 hover:text-white border border-slate-700 transition-all"
                       >
                         <Box className="w-3.5 h-3.5 text-brand-400" />
-                        <span>Allocate Asset</span>
+                        <span>Request Supplies</span>
                       </button>
                     )}
                   </div>
@@ -364,11 +364,11 @@ export default function MissionsPage() {
         </form>
       </Modal>
 
-      {/* Modal 2: Allocate Resource Modal */}
+      {/* Modal 2: Submit a Logistics Request */}
       <Modal
         isOpen={isAllocateModalOpen}
         onClose={() => setIsAllocateModalOpen(false)}
-        title={`Allocate Asset to Mission #${selectedMission?.MISSIONID || selectedMission?.mission_id}`}
+        title={`Request Supplies for Mission #${selectedMission?.MISSIONID || selectedMission?.mission_id}`}
       >
         <form onSubmit={handleAllocateResource} className="space-y-4">
           <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg text-xs space-y-1">

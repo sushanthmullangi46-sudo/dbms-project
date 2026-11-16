@@ -18,7 +18,11 @@ import {
   Flame,
   Check,
   Send,
-  Zap
+  Zap,
+  Play,
+  Pause,
+  RotateCcw,
+  Gauge
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -97,7 +101,45 @@ export default function ResponderMissions() {
   const [isGpsSharing, setIsGpsSharing] = useState(false);
   const [squadCoords, setSquadCoords] = useState(null);
   const gpsWatchId = useRef(null);
-  const simInterval = useRef(null);
+
+  // Swiggy-Style Automated Real Road Navigation & Timeline
+  const [roadRoute, setRoadRoute] = useState([]);
+  const [routeDistanceKm, setRouteDistanceKm] = useState(4.8);
+  const [routeDurationMin, setRouteDurationMin] = useState(8);
+  const [simRunning, setSimRunning] = useState(false);
+  const [simWaypointIdx, setSimWaypointIdx] = useState(0);
+  const [simSpeed, setSimSpeed] = useState(2); // 1 = Real, 3 = Fast, 6 = Turbo
+  const [remainingDist, setRemainingDist] = useState(4.8);
+  const [remainingEta, setRemainingEta] = useState(8);
+  const simIntervalRef = useRef(null);
+
+  // OSRM Real Road Route Fetcher (100% Free, Zero API Keys)
+  const fetchRoadRoute = async (startLat, startLng, endLat, endLng) => {
+    try {
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`);
+      const data = await res.json();
+      if (data?.routes?.[0]?.geometry?.coordinates?.length > 0) {
+        const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+        const distKm = Number((data.routes[0].distance / 1000).toFixed(2));
+        const durMin = Math.round(data.routes[0].duration / 60);
+        return { coords, distKm, durMin };
+      }
+    } catch (err) {
+      console.warn('OSRM routing fetch fallback:', err);
+    }
+    // High-resolution realistic street curvature fallback
+    const coords = [];
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const curve = Math.sin(t * Math.PI) * 0.003;
+      coords.push([
+        startLat + (endLat - startLat) * t + curve,
+        startLng + (endLng - startLng) * t - curve * 0.4
+      ]);
+    }
+    return { coords, distKm: 5.2, durMin: 9 };
+  };
 
   // Field Report Modal
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -108,19 +150,10 @@ export default function ResponderMissions() {
   });
 
   // Field Supply Request
-  const [fieldSupplyName, setFieldSupplyName] = useState('Drinking Water');
+  const [resourceCatalog, setResourceCatalog] = useState([]);
+  const [fieldSupplyId, setFieldSupplyId] = useState('');
   const [fieldSupplyQty, setFieldSupplyQty] = useState(25);
-  const [fieldDeliveries, setFieldDeliveries] = useState([
-    {
-      delivery_id: 101,
-      warehouse_name: 'Hebbal Central Disaster Reserve Depot',
-      transport_driver_name: 'Driver Ramesh',
-      vehicle_registration: 'KA-04-TR-4421',
-      delivery_status: 'DISPATCHED',
-      item_name: 'Emergency Potable Water 20L Cans',
-      quantity: 50
-    }
-  ]);
+  const [fieldDeliveries, setFieldDeliveries] = useState([]);
 
   const { success, error } = useToast();
 
@@ -141,6 +174,16 @@ export default function ResponderMissions() {
     }
   };
 
+  useEffect(() => {
+    api.get('/resources')
+      .then((res) => {
+        const items = res?.resources || [];
+        setResourceCatalog(items);
+        if (items.length) setFieldSupplyId(String(items[0].resource_id || items[0].RESOURCEID));
+      })
+      .catch((err) => error(err.message || 'Resource catalogue could not be loaded.'));
+  }, []);
+
   const fetchAvailableIncidents = async () => {
     try {
       const res = await api.get('/responder/available-incidents');
@@ -159,7 +202,10 @@ export default function ResponderMissions() {
     const interval = setInterval(() => {
       fetchAvailableIncidents();
     }, 7000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (gpsWatchId.current !== null && navigator.geolocation) navigator.geolocation.clearWatch(gpsWatchId.current);
+    };
   }, []);
 
   const handleSelectMission = async (m) => {
@@ -169,15 +215,139 @@ export default function ResponderMissions() {
       const res = await api.get(`/responder/missions/${m.MISSIONID || m.mission_id || m.id}`);
       if (res && res.success) {
         setMissionDetail(res.mission);
-        const tLat = Number(res.mission.TARGETLATITUDE || 13.0358);
-        const tLng = Number(res.mission.TARGETLONGITUDE || 77.5970);
-        setSquadCoords({ lat: tLat - 0.018, lng: tLng - 0.014 });
+        const tLat = Number(res.mission.TARGETLATITUDE || res.mission.latitude || 13.0358);
+        const tLng = Number(res.mission.TARGETLONGITUDE || res.mission.longitude || 77.5970);
+        const baseLat = 13.0623;
+        const baseLng = 77.5871;
+        setSquadCoords({ lat: baseLat, lng: baseLng });
+
+        // Load genuine OSRM street route
+        fetchRoadRoute(baseLat, baseLng, tLat, tLng).then(r => {
+          setRoadRoute(r.coords);
+          setRouteDistanceKm(r.distKm);
+          setRouteDurationMin(r.durMin);
+          setRemainingDist(r.distKm);
+          setRemainingEta(r.durMin);
+          setSimWaypointIdx(0);
+        });
+
+        const incidentId = res.mission.disaster_id || res.mission.INCIDENTID;
+        if (incidentId) {
+          const deliveryResult = await api.get(`/deliveries?disaster_id=${incidentId}`);
+          const deliveryRows = (deliveryResult?.deliveries || []).map((delivery) => ({
+            ...delivery,
+            delivery_status: delivery.status,
+            item_name: delivery.items?.map((item) => item.resource_name).filter(Boolean).join(', ') || 'Relief supplies',
+            quantity: delivery.items?.reduce((sum, item) => sum + Number(item.quantity_dispatched || 0), 0) || 0,
+            quantity_received: delivery.items?.reduce((sum, item) => sum + Number(item.quantity_received || 0), 0) || 0
+          }));
+          setFieldDeliveries(deliveryRows);
+        } else {
+          setFieldDeliveries([]);
+        }
       }
     } catch (err) {
       console.warn('Failed to load mission detail:', err);
     } finally {
       setDetailLoading(false);
     }
+  };
+
+  // Swiggy Delivery Boy Automated Live Mission Simulator
+  const startSwiggySimulation = () => {
+    if (simRunning) {
+      // Pause
+      if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+      setSimRunning(false);
+      success('Swiggy-style live tracking paused.');
+      return;
+    }
+
+    if (!selectedMission) {
+      error('Please select an active tactical mission.');
+      return;
+    }
+
+    const mId = selectedMission.MISSIONID || selectedMission.mission_id || selectedMission.id;
+    setSimRunning(true);
+    success('🚀 Swiggy live navigation started: Vehicle tracking along real road network!');
+
+    // Mobilize squad
+    api.put(`/responder/missions/${mId}/status`, { status: 'DISPATCHED', notes: 'Automated squad mobilization' })
+      .then(() => fetchMissions()).catch(() => {});
+
+    let currentIdx = simWaypointIdx;
+    const intervalMs = Math.max(250, 1000 / simSpeed);
+
+    simIntervalRef.current = setInterval(async () => {
+      const stepIncrement = Math.max(1, Math.floor((roadRoute.length || 30) / 25));
+      currentIdx += stepIncrement;
+
+      if (roadRoute.length > 0 && currentIdx < roadRoute.length) {
+        const point = roadRoute[currentIdx];
+        setSimWaypointIdx(currentIdx);
+        setSquadCoords({ lat: point[0], lng: point[1] });
+
+        const fraction = currentIdx / roadRoute.length;
+        const remD = Number((routeDistanceKm * (1 - fraction)).toFixed(2));
+        const remE = Math.max(1, Math.ceil(routeDurationMin * (1 - fraction)));
+        setRemainingDist(remD);
+        setRemainingEta(remE);
+
+        // Update status to EN_ROUTE
+        api.put(`/responder/missions/${mId}/status`, { status: 'EN_ROUTE', notes: 'Squad vehicle moving on streets' })
+          .catch(() => {});
+
+        // Ingest telemetry into RescueLocationHistory in database
+        api.post(`/responder/missions/${mId}/location`, {
+          latitude: point[0],
+          longitude: point[1],
+          speed: 42 + Math.floor(Math.random() * 8),
+          heading: 115,
+          accuracy: 5,
+          status_note: 'EN_ROUTE'
+        }).catch(() => {});
+      } else {
+        // Reached destination!
+        clearInterval(simIntervalRef.current);
+        const finalPoint = roadRoute[roadRoute.length - 1] || [13.0358, 77.5970];
+        setSquadCoords({ lat: finalPoint[0], lng: finalPoint[1] });
+        setRemainingDist(0);
+        setRemainingEta(0);
+
+        // Stage 3: ON_SCENE
+        await api.put(`/responder/missions/${mId}/status`, { status: 'ON_SCENE', notes: 'Arrived at emergency perimeter' });
+        await fetchMissions();
+        success('🚑 Squad arrived at incident perimeter (ON SCENE)!');
+
+        // Stage 4: RESCUE_IN_PROGRESS after 3 seconds
+        setTimeout(async () => {
+          await api.put(`/responder/missions/${mId}/status`, { status: 'RESCUE_IN_PROGRESS', notes: 'Active triage & extraction in progress' });
+          await fetchMissions();
+          success('🦺 Search & Rescue commenced: Extricating trapped victims & first-aid triage.');
+
+          // Stage 5: COMPLETED after another 4 seconds
+          setTimeout(async () => {
+            await api.post(`/responder/missions/${mId}/complete`, { notes: 'Operation completed successfully. All victims evacuated.' });
+            await fetchMissions();
+            setSimRunning(false);
+            success('🎉 Mission Accomplished! Trapped citizens safely evacuated.');
+          }, 4500);
+        }, 3000);
+      }
+    }, intervalMs);
+  };
+
+  const resetSwiggySimulation = () => {
+    if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+    setSimRunning(false);
+    setSimWaypointIdx(0);
+    if (roadRoute.length > 0) {
+      setSquadCoords({ lat: roadRoute[0][0], lng: roadRoute[0][1] });
+    }
+    setRemainingDist(routeDistanceKm);
+    setRemainingEta(routeDurationMin);
+    success('Simulation reset to depot base.');
   };
 
   const handleClaimIncident = async (incident) => {
@@ -239,61 +409,40 @@ export default function ResponderMissions() {
       // Turn OFF
       if (gpsWatchId.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(gpsWatchId.current);
-      }
-      if (simInterval.current) {
-        clearInterval(simInterval.current);
+        gpsWatchId.current = null;
       }
       setIsGpsSharing(false);
       success('Live GPS location sharing paused.');
     } else {
-      // Turn ON
-      setIsGpsSharing(true);
-      success('Live GPS location sharing activated. Broadcasting coordinates to Command Center.');
-
-      const mId = selectedMission?.MISSIONID || selectedMission?.mission_id || 1;
-      const targetLat = Number(missionDetail?.TARGETLATITUDE || 13.0358);
-      const targetLng = Number(missionDetail?.TARGETLONGITUDE || 77.5970);
-
-      // Try browser GPS
-      if (navigator.geolocation) {
-        gpsWatchId.current = navigator.geolocation.watchPosition(
-          (pos) => {
-            const { latitude, longitude, speed, heading, accuracy } = pos.coords;
-            setSquadCoords({ lat: latitude, lng: longitude });
-            api.post(`/responder/missions/${mId}/location`, {
-              latitude,
-              longitude,
-              speed: speed || 35.0,
-              heading: heading || 45.0,
-              accuracy: accuracy || 5.0,
-              status_note: missionDetail?.STATUS || 'EN_ROUTE'
-            }).catch(e => console.warn('GPS telemetry post error:', e));
-          },
-          (err) => {
-            console.warn('Browser GPS unavailable, using simulated approach:', err);
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
-        );
+      if (!navigator.geolocation) {
+        error('This browser does not provide GPS location. No tracking was started.');
+        return;
       }
-
-      // Simulation fallback: advance coordinate towards target every 6 seconds
-      simInterval.current = setInterval(() => {
-        setSquadCoords(prev => {
-          if (!prev) return { lat: targetLat - 0.015, lng: targetLng - 0.012 };
-          const stepLat = (targetLat - prev.lat) * 0.15;
-          const stepLng = (targetLng - prev.lng) * 0.15;
-          const next = { lat: prev.lat + stepLat, lng: prev.lng + stepLng };
+      const mId = selectedMission?.MISSIONID || selectedMission?.mission_id;
+      if (!mId) {
+        error('Select a persisted mission before starting GPS sharing.');
+        return;
+      }
+      gpsWatchId.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, speed, heading, accuracy } = pos.coords;
+          setSquadCoords({ lat: latitude, lng: longitude });
+          setIsGpsSharing(true);
           api.post(`/responder/missions/${mId}/location`, {
-            latitude: next.lat,
-            longitude: next.lng,
-            speed: 38.0,
-            heading: 45.0,
-            accuracy: 4.0,
+            latitude,
+            longitude,
+            speed: speed ?? 0,
+            heading: heading ?? 0,
+            accuracy,
             status_note: missionDetail?.STATUS || 'EN_ROUTE'
-          }).catch(() => {});
-          return next;
-        });
-      }, 6000);
+          }).catch(e => error(e.message || 'GPS update could not be saved.'));
+        },
+        (err) => {
+          setIsGpsSharing(false);
+          error(`GPS sharing unavailable: ${err.message}`);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
     }
   };
 
@@ -328,25 +477,29 @@ export default function ResponderMissions() {
     e.preventDefault();
     try {
       await api.post('/responder/requests', {
-        supply_name: fieldSupplyName,
-        quantity: fieldSupplyQty,
-        incident_id: selectedMission?.INCIDENTID || 1,
+        resource_id: Number(fieldSupplyId),
+        quantity: Number(fieldSupplyQty),
+        incident_id: selectedMission?.INCIDENTID,
         priority: 'P1'
       });
-      success(`Emergency field request for ${fieldSupplyQty} units of ${fieldSupplyName} transmitted to Logistics Coordinator.`);
+      success('Field supply request saved for logistics review.');
     } catch (err) {
-      error('Failed to submit field supply request.');
+      error(err.message || 'Failed to submit field supply request.');
     }
   };
 
   const handleConfirmDeliveryReceipt = async (delivId) => {
     try {
-      await api.post(`/responder/deliveries/${delivId}/confirm`, {
-        receiver_name: 'Capt. Arvind Rao (Squad Leader)',
-        proof_of_delivery_note: 'Supplies verified and distributed on-site.'
+      const delivery = fieldDeliveries.find((item) => item.delivery_id === delivId);
+      if (!delivery) throw new Error('Delivery record is no longer available. Refresh the mission.');
+      await api.post(`/deliveries/${delivId}/confirm`, {
+        quantity_received: delivery.quantity,
+        quantity_damaged: 0,
+        receiver_name: 'Field response team',
+        proof_of_delivery_note: 'Receipt recorded by the assigned field team.'
       });
       success('Delivery receipt stamped. Inventory updated.');
-      setFieldDeliveries(prev => prev.map(d => d.delivery_id === delivId ? { ...d, delivery_status: 'DELIVERED' } : d));
+      await handleSelectMission(selectedMission);
     } catch (err) {
       error('Confirmation failed');
     }
@@ -358,10 +511,10 @@ export default function ResponderMissions() {
 
   const currentStatus = (missionDetail?.STATUS || selectedMission?.STATUS || 'ASSIGNED').toUpperCase();
 
-  const targetLat = Number(missionDetail?.TARGETLATITUDE || 13.0358);
-  const targetLng = Number(missionDetail?.TARGETLONGITUDE || 77.5970);
-  const currentSquadLat = squadCoords?.lat || (targetLat - 0.018);
-  const currentSquadLng = squadCoords?.lng || (targetLng - 0.014);
+  const targetLat = Number(missionDetail?.TARGETLATITUDE);
+  const targetLng = Number(missionDetail?.TARGETLONGITUDE);
+  const currentSquadLat = squadCoords?.lat;
+  const currentSquadLng = squadCoords?.lng;
 
   return (
     <div className="space-y-6">
@@ -591,134 +744,208 @@ export default function ResponderMissions() {
                   </div>
 
                   <div className="flex flex-wrap gap-2.5">
-                    {currentStatus === 'ASSIGNED' && (
-                      <button
-                        onClick={() => handleTransition('ACKNOWLEDGED')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-600/20"
-                      >
-                        1. Acknowledge Mission
-                      </button>
-                    )}
+                    {/* Swiggy-Style Automated Real Road Navigation & Timeline */}
+                    <div className="bg-slate-950 p-4 rounded-xl border border-cyan-500/30 space-y-3 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+                            <span className="font-bold text-xs uppercase tracking-wider text-cyan-300">
+                              Swiggy-Style Live Road Navigation & Automated Timeline
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Automates mission stages step-by-step along real streets (Dispatched → En Route → On Scene → Rescued → Completed)
+                          </p>
+                        </div>
 
-                    {(currentStatus === 'ACKNOWLEDGED' || currentStatus === 'ACCEPTED') && (
-                      <button
-                        onClick={() => handleTransition('PREPARING')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-600/20 flex items-center gap-1.5"
-                      >
-                        <span>2. Preparing Squad & Gear</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                        <div className="flex items-center space-x-2 shrink-0">
+                          {/* Speed Toggle */}
+                          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => setSimSpeed(1)}
+                              className={`px-2 py-0.5 rounded transition-all ${simSpeed === 1 ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400'}`}
+                            >
+                              1x Demo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSimSpeed(3)}
+                              className={`px-2 py-0.5 rounded transition-all ${simSpeed === 3 ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400'}`}
+                            >
+                              3x Fast
+                            </button>
+                          </div>
 
-                    {currentStatus === 'PREPARING' && (
-                      <button
-                        onClick={() => handleTransition('DISPATCHED')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 flex items-center gap-1.5"
-                      >
-                        <span>3. Dispatched & Departing Base</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                          {/* Start/Pause Simulation Button */}
+                          <button
+                            type="button"
+                            onClick={startSwiggySimulation}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all shadow-lg ${
+                              simRunning
+                                ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/30'
+                                : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-cyan-600/30'
+                            }`}
+                          >
+                            {simRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                            <span>{simRunning ? 'Pause Timeline' : '▶ Start Swiggy Live Mission'}</span>
+                          </button>
 
-                    {currentStatus === 'DISPATCHED' && (
-                      <button
-                        onClick={() => handleTransition('EN_ROUTE')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20 flex items-center gap-1.5"
-                      >
-                        <span>4. En Route (Mobilizing)</span>
-                        <Navigation className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {currentStatus === 'EN_ROUTE' && (
-                      <button
-                        onClick={() => handleTransition('ON_SCENE')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-600/20 flex items-center gap-1.5"
-                      >
-                        <span>5. Arrived On Scene</span>
-                        <MapPin className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {(currentStatus === 'ON_SCENE' || currentStatus === 'ARRIVED') && (
-                      <button
-                        onClick={() => handleTransition('RESCUE_IN_PROGRESS')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 flex items-center gap-1.5"
-                      >
-                        <span>6. Commence Search & Rescue Operation</span>
-                        <Radio className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {(currentStatus === 'RESCUE_IN_PROGRESS' || currentStatus === 'IN_PROGRESS') && (
-                      <button
-                        onClick={() => handleTransition('COMPLETED')}
-                        disabled={actionLoading}
-                        className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>7. Complete Mission (Release Squad)</span>
-                      </button>
-                    )}
-
-                    {currentStatus === 'COMPLETED' && (
-                      <div className="flex items-center space-x-2 text-emerald-400 text-xs font-semibold">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Mission Successfully Completed. Squad released back to AVAILABLE readiness.</span>
+                          <button
+                            type="button"
+                            onClick={resetSwiggySimulation}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs"
+                            title="Reset to Base"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    )}
+
+                      {/* Live Telemetry Metric Bar */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-slate-800/80 text-xs font-mono">
+                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                          <span className="text-[10px] text-slate-500 uppercase block font-sans font-semibold">Mission Stage</span>
+                          <span className="font-bold text-white text-xs">{currentStatus}</span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                          <span className="text-[10px] text-slate-500 uppercase block font-sans font-semibold">Remaining Dist</span>
+                          <span className="font-bold text-cyan-400 text-xs">{remainingDist} km</span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                          <span className="text-[10px] text-slate-500 uppercase block font-sans font-semibold">Est. Arrival (ETA)</span>
+                          <span className="font-bold text-amber-400 text-xs">{remainingEta} mins</span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                          <span className="text-[10px] text-slate-500 uppercase block font-sans font-semibold">Real Road Route</span>
+                          <span className="font-bold text-emerald-400 text-xs">{roadRoute.length} OSRM Points</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Manual Step Overrides */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-[11px] text-slate-500 font-semibold uppercase">Manual Controls:</span>
+                      {currentStatus === 'ASSIGNED' && (
+                        <button
+                          onClick={() => handleTransition('ACKNOWLEDGED')}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-sm"
+                        >
+                          1. Acknowledge Mission
+                        </button>
+                      )}
+
+                      {(currentStatus === 'ACKNOWLEDGED' || currentStatus === 'ACCEPTED') && (
+                        <button
+                          onClick={() => handleTransition('PREPARING')}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-sm flex items-center gap-1.5"
+                        >
+                          <span>2. Preparing Gear</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      {currentStatus === 'PREPARING' && (
+                        <button
+                          onClick={() => handleTransition('DISPATCHED')}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-sm flex items-center gap-1.5"
+                        >
+                          <span>3. Dispatched</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      {currentStatus === 'DISPATCHED' && (
+                        <button
+                          onClick={() => handleTransition('EN_ROUTE')}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm flex items-center gap-1.5"
+                        >
+                          <span>4. En Route</span>
+                          <Navigation className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      {currentStatus === 'EN_ROUTE' && (
+                        <button
+                          onClick={() => handleTransition('ON_SCENE')}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm flex items-center gap-1.5"
+                        >
+                          <span>5. Arrived On Scene</span>
+                          <MapPin className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      {(currentStatus === 'ON_SCENE' || currentStatus === 'ARRIVED') && (
+                        <button
+                          onClick={() => handleTransition('RESCUE_IN_PROGRESS')}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-sm flex items-center gap-1.5"
+                        >
+                          <span>6. Commence Search & Rescue</span>
+                          <Radio className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      {(currentStatus === 'RESCUE_IN_PROGRESS' || currentStatus === 'IN_PROGRESS') && (
+                        <button
+                          onClick={() => handleTransition('COMPLETED')}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>7. Complete Mission</span>
+                        </button>
+                      )}
+
+                      {currentStatus === 'COMPLETED' && (
+                        <div className="flex items-center space-x-2 text-emerald-400 text-xs font-semibold">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Mission Completed. Squad released back to AVAILABLE readiness.</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Tactical Live Map View */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span className="font-bold uppercase tracking-wider text-white">Live Route & Sector GIS</span>
-                    <span>Distance to Target: <strong className="text-cyan-400 font-mono">1.8 km</strong></span>
+                    <span className="font-bold uppercase tracking-wider text-white">Realistic Road-Network Tactical Map</span>
+                    <span className="font-mono text-cyan-400">{simRunning ? '● Live Telemetry Streaming' : (squadCoords ? 'Squad GPS Active' : 'Depot Standby')}</span>
                   </div>
-                  <div className="h-64 w-full rounded-xl overflow-hidden border border-slate-800 relative z-0">
-                    <MapContainer
-                      center={[targetLat, targetLng]}
-                      zoom={14}
-                      scrollWheelZoom={false}
-                      className="h-full w-full"
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                      />
-                      <Marker position={[targetLat, targetLng]} icon={emergencyMarkerIcon}>
-                        <Popup>
-                          <div className="text-xs">
-                            <strong>{missionDetail.INCIDENTNAME}</strong>
-                            <p>{missionDetail.TARGETLOCATION}</p>
-                          </div>
-                        </Popup>
-                      </Marker>
-                      <Marker position={[currentSquadLat, currentSquadLng]} icon={responderVehicleIcon}>
-                        <Popup>
-                          <div className="text-xs">
-                            <strong>NDRF Alpha Squad</strong>
-                            <p>Status: {currentStatus}</p>
-                          </div>
-                        </Popup>
-                      </Marker>
-                      <Polyline
-                        positions={[
-                          [currentSquadLat, currentSquadLng],
-                          [targetLat, targetLng]
-                        ]}
-                        color="#06b6d4"
-                        weight={4}
-                        dashArray="6, 8"
-                      />
-                    </MapContainer>
+                  <div className="h-72 w-full rounded-xl overflow-hidden border border-slate-800 relative z-0">
+                    {Number.isFinite(targetLat) && Number.isFinite(targetLng) ? (
+                      <MapContainer center={[targetLat, targetLng]} zoom={13} scrollWheelZoom={false} className="h-full w-full">
+                        <TileLayer attribution='&copy; <a href="https://carto.com/">CARTO</a>' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                        
+                        {/* Realistic Road Route Polyline */}
+                        {roadRoute.length > 1 && (
+                          <Polyline
+                            positions={roadRoute}
+                            color="#06b6d4"
+                            weight={5}
+                            opacity={0.85}
+                            dashArray={simRunning ? "8, 8" : undefined}
+                          />
+                        )}
+
+                        <Marker position={[targetLat, targetLng]} icon={emergencyMarkerIcon}>
+                          <Popup><div className="text-xs"><strong>{missionDetail.INCIDENTNAME}</strong><p>{missionDetail.TARGETLOCATION}</p></div></Popup>
+                        </Marker>
+
+                        {Number.isFinite(currentSquadLat) && Number.isFinite(currentSquadLng) && (
+                          <Marker position={[currentSquadLat, currentSquadLng]} icon={responderVehicleIcon}>
+                            <Popup><div className="text-xs"><strong>{missionDetail.TEAMNAME}</strong><p>Status: {currentStatus}</p><p>Speed: 45 km/h</p></div></Popup>
+                          </Marker>
+                        )}
+                      </MapContainer>
+                    ) : <div className="h-full flex items-center justify-center text-sm text-slate-400">Incident coordinates are not available.</div>}
                   </div>
                 </div>
               </div>
@@ -748,17 +975,15 @@ export default function ResponderMissions() {
                   Resource Item Needed
                 </label>
                 <select
-                  value={fieldSupplyName}
-                  onChange={(e) => setFieldSupplyName(e.target.value)}
+                  value={fieldSupplyId}
+                  onChange={(e) => setFieldSupplyId(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
                 >
-                  <option value="Drinking Water">Purified Potable Water (20L Cans)</option>
-                  <option value="Food Packs">Emergency 72hr Food Rations</option>
-                  <option value="First Aid">Trauma Emergency First-Aid Kits</option>
-                  <option value="Essential Medicines">Emergency Medicines & IV Fluids</option>
-                  <option value="Blankets">Thermal Cold Relief Blankets</option>
-                  <option value="Rescue Boats">Inflatable Rescue Boats (Zodiac)</option>
-                  <option value="Storm Pump">Heavy De-Watering Storm Pump</option>
+                  {resourceCatalog.map((item) => (
+                    <option key={item.resource_id || item.RESOURCEID} value={item.resource_id || item.RESOURCEID}>
+                      {item.resource_name || item.RESOURCENAME}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -780,7 +1005,7 @@ export default function ResponderMissions() {
                 className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all shadow-md shadow-cyan-600/20"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Transmit Field Request to Logistics</span>
+                <span>Submit Field Request to Logistics</span>
               </button>
             </form>
           </div>

@@ -2,21 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timezone
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.database import get_db
 from app.models.schema import (
     DisasterReport, Disaster, DisasterLocation, UserAccount,
-    Notification, EmergencyAlert
+    Notification, EmergencyAlert, Role
 )
-from app.auth.security import get_current_user
+from app.auth.security import get_current_user, require_role
 from app.services.workflow_service import WorkflowService
 
 router = APIRouter(prefix="/sos", tags=["SOS Emergency Alerting & Direct Dispatch"])
 
 class SOSRequest(BaseModel):
-    latitude: Optional[float] = 13.0358
-    longitude: Optional[float] = 77.5970
-    address: Optional[str] = "Current GPS Coordinates"
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    address: Optional[str] = None
     emergency_type: Optional[str] = "FLASH_FLOOD_TRAPPED"
     notes: Optional[str] = "CRITICAL SOS: Citizen trapped requiring immediate rescue."
     trapped_count: Optional[int] = 1
@@ -26,7 +26,7 @@ class SOSRequest(BaseModel):
 @router.post("", status_code=status.HTTP_201_CREATED)
 def activate_sos(
     sos_in: SOSRequest,
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["CITIZEN"])),
     db: Session = Depends(get_db)
 ):
     """
@@ -38,8 +38,8 @@ def activate_sos(
     - Broadcasts high-priority notifications to command officers & rescue leads
     """
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    lat = sos_in.latitude or 13.0358
-    lng = sos_in.longitude or 77.5970
+    lat = sos_in.latitude
+    lng = sos_in.longitude
 
     # Pick location
     loc = db.query(DisasterLocation).first()
@@ -59,11 +59,14 @@ def activate_sos(
         evacuation_needed=True,
         attachment_urls=[],
         requested_supplies=[
-            {"resource_id": 2, "quantity": 10}, # Water
-            {"resource_id": 3, "quantity": 2},  # First Aid Kits
-            {"resource_id": 4, "quantity": 1}   # Inflatable Rescue Boat
+            {"resource_id": 4, "quantity": 10}, # Potable Water
+            {"resource_id": 5, "quantity": 2},  # First Aid Kits
+            {"resource_id": 1, "quantity": 1}   # Rescue Boat
         ],
-        severity="P1"
+        severity="P1",
+        latitude=lat,
+        longitude=lng,
+        address=sos_in.address
     )
 
     # Immediately ensure linked disaster is marked ACTIVE
@@ -71,7 +74,6 @@ def activate_sos(
         disaster = db.query(Disaster).filter(Disaster.disaster_id == report.disaster_id).first()
         if disaster:
             disaster.status = "ACTIVE"
-            disaster.severity = "CRITICAL"
             db.commit()
 
     # Create emergency alert for command center
@@ -88,8 +90,9 @@ def activate_sos(
     db.add(alert)
 
     # Notify all officers and rescue leads
-    officers = db.query(UserAccount).join(UserAccount.role).filter(
-        UserAccount.account_status == "ACTIVE"
+    officers = db.query(UserAccount).join(Role).filter(
+        UserAccount.account_status == "ACTIVE",
+        Role.role_name.in_(["DISASTER_OFFICER", "FIELD_RESPONDER"])
     ).all()
     for off in officers:
         db.add(Notification(

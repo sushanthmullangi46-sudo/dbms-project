@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import math
 from app.database import get_db
-from app.models.schema import ResponseTeam, TeamAssignment, Agency, UserAccount, TeamMember, Disaster
+from app.models.schema import ResponseTeam, TeamAssignment, Agency, UserAccount, TeamMember, Disaster, RescueLocationHistory
 from app.schemas.dtos import TeamAssignmentCreate, TeamStatusUpdate
 from app.auth.security import get_current_user, require_role
 from app.services.workflow_service import WorkflowService
@@ -17,7 +17,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         return round(R * c, 2)
     except Exception:
-        return 3.2
+        return None
 
 router = APIRouter(prefix="/teams", tags=["Tactical Field Teams & Missions"])
 
@@ -126,6 +126,7 @@ def list_assignments(
 @router.get("/recommendations")
 def get_squad_recommendations(
     disaster_id: Optional[int] = None,
+    current_user: UserAccount = Depends(require_role(["DISASTER_OFFICER", "FIELD_RESPONDER", "COORDINATOR"])),
     db: Session = Depends(get_db)
 ):
     """
@@ -137,14 +138,14 @@ def get_squad_recommendations(
     - Squad capacity & equipment readiness (10%)
     """
     disaster = None
-    target_lat = 13.0358
-    target_lon = 77.5970
-    disaster_type = "FLOOD"
+    target_lat = None
+    target_lon = None
+    disaster_type = None
 
     if disaster_id:
         disaster = db.query(Disaster).filter(Disaster.disaster_id == disaster_id).first()
         if disaster:
-            disaster_type = (disaster.disaster_type or "FLOOD").upper()
+            disaster_type = (disaster.disaster_type or "OTHER").upper()
             if disaster.location:
                 target_lat = disaster.location.latitude
                 target_lon = disaster.location.longitude
@@ -162,7 +163,7 @@ def get_squad_recommendations(
         "HAZMAT": ["HAZMAT", "MEDICAL_TRIAGE"],
         "LANDSLIDE": ["COLLAPSE_SAR", "WATER_RESCUE"]
     }
-    preferred_specs = spec_map.get(disaster_type, ["WATER_RESCUE", "COLLAPSE_SAR", "MEDICAL_TRIAGE"])
+    preferred_specs = spec_map.get(disaster_type or "", ["WATER_RESCUE", "COLLAPSE_SAR", "MEDICAL_TRIAGE"])
 
     for team in teams:
         score = 0
@@ -192,21 +193,21 @@ def get_squad_recommendations(
             score += 5
             reasons.append("Squad has ongoing mission commitments")
 
-        # 3. Proximity / Distance (Max 20)
-        team_lat = getattr(team, 'current_latitude', None) or target_lat + 0.02
-        team_lon = getattr(team, 'current_longitude', None) or target_lon + 0.015
-        dist_km = haversine_km(target_lat, target_lon, team_lat, team_lon)
-        eta_mins = max(3, int(round((dist_km / 35.0) * 60)))
-
-        if dist_km <= 3.0:
-            score += 20
-            reasons.append(f"Immediate radius ({dist_km} km, ETA ~{eta_mins} mins)")
-        elif dist_km <= 7.0:
-            score += 14
-            reasons.append(f"Medium sector range ({dist_km} km, ETA ~{eta_mins} mins)")
+        # Proximity is scored only from a persisted GPS fix and incident location.
+        last_fix = db.query(RescueLocationHistory).filter(
+            RescueLocationHistory.team_id == team.team_id
+        ).order_by(RescueLocationHistory.recorded_at.desc()).first()
+        has_positions = all(value is not None for value in (
+            target_lat, target_lon,
+            last_fix.latitude if last_fix else None,
+            last_fix.longitude if last_fix else None
+        ))
+        dist_km = haversine_km(target_lat, target_lon, last_fix.latitude, last_fix.longitude) if has_positions else None
+        if dist_km is not None:
+            score += 20 if dist_km <= 3.0 else (14 if dist_km <= 7.0 else 8)
+            reasons.append(f"Straight-line distance {dist_km} km from the last saved GPS fix")
         else:
-            score += 8
-            reasons.append(f"Extended sector distance ({dist_km} km, ETA ~{eta_mins} mins)")
+            reasons.append("Proximity unavailable: no incident coordinates or saved team GPS fix")
 
         # 4. Capacity (Max 10)
         cap = getattr(team, 'capacity', 10) or 10
@@ -227,7 +228,8 @@ def get_squad_recommendations(
             "readiness_status": team.readiness_status,
             "match_score_pct": min(100, score),
             "distance_km": dist_km,
-            "estimated_eta_minutes": eta_mins,
+            "estimated_eta_minutes": None,
+            "routing_available": False,
             "justification": " • ".join(reasons)
         })
 

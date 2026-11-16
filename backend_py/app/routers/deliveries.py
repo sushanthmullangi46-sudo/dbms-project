@@ -13,20 +13,24 @@ router = APIRouter(prefix="/deliveries", tags=["Relief Dispatch & Delivery Confi
 @router.get("")
 def list_deliveries(
     status_filter: Optional[str] = None,
+    disaster_id: Optional[int] = None,
     current_user: UserAccount = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     query = db.query(Delivery)
     if status_filter:
         query = query.filter(Delivery.delivery_status == status_filter.upper())
+    if disaster_id is not None:
+        query = query.filter(Delivery.disaster_id == disaster_id)
     deliveries = query.order_by(Delivery.delivery_id.desc()).all()
 
     results = []
     for d in deliveries:
         results.append({
             "delivery_id": d.delivery_id,
+            "disaster_id": d.disaster_id,
             "warehouse_name": d.warehouse.warehouse_name if d.warehouse else "Warehouse",
-            "disaster_name": d.disaster_id,
+            "disaster_name": d.disaster.disaster_name if d.disaster else None,
             "transport_driver": d.transport_driver_name,
             "vehicle_registration": d.vehicle_registration,
             "status": d.delivery_status,
@@ -35,7 +39,9 @@ def list_deliveries(
             "receiver_name": d.receiver_name,
             "items": [
                 {
-                    "resource_name": itm.resource_id,
+                    "resource_id": itm.resource_id,
+                    "resource_name": itm.resource.resource_name if itm.resource else None,
+                    "unit": itm.resource.unit if itm.resource else None,
                     "quantity_dispatched": itm.quantity_dispatched,
                     "quantity_received": itm.quantity_received,
                     "quantity_damaged": itm.quantity_damaged
@@ -87,7 +93,7 @@ class DirectDeliveryConfirm(BaseModel):
 @router.post("/confirm")
 def confirm_delivery_direct(
     body: DirectDeliveryConfirm,
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["FIELD_RESPONDER", "DISASTER_OFFICER"])),
     db: Session = Depends(get_db)
 ):
     del_id = body.delivery_id or 1
@@ -112,7 +118,7 @@ def confirm_delivery_direct(
 def confirm_delivery(
     delivery_id: int,
     conf_in: DeliveryConfirmationRequest,
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["FIELD_RESPONDER", "DISASTER_OFFICER"])),
     db: Session = Depends(get_db)
 ):
     """

@@ -105,6 +105,12 @@ function normalizeMarker(m, defaultType = 'INCIDENT') {
     specialization: m.specialization ?? m.SPECIALIZATION ?? null,
     description: m.description ?? m.DESCRIPTION ?? null,
     submittedAt: m.submittedAt ?? m.submitted_at ?? m.STARTTIME ?? null,
+    icuBeds: m.available_icu_beds ?? m.icu_beds ?? null,
+    totalIcuBeds: m.total_icu_beds ?? null,
+    generalBeds: m.available_general_beds ?? m.general_beds ?? null,
+    totalGeneralBeds: m.total_general_beds ?? null,
+    traumaLevel: m.trauma_center_level ?? m.trauma_level ?? 'LEVEL_1',
+    phone: m.phone ?? m.helpline ?? '+91-80-6666-9999',
     lat,
     lng
   };
@@ -406,13 +412,37 @@ export default function DisasterMap({ markers = {}, center = [13.05, 77.60], zoo
         {layers.hospitals && safeData.hospitals.map((m) => (
           <Marker key={`hosp-${m.id}`} position={[m.lat, m.lng]} icon={icons.HOSPITAL}>
             <Popup>
-              <div className="p-1 font-sans text-slate-900">
-                <div className="text-[10px] font-bold text-cyan-600 uppercase">TERTIARY CARE HOSPITAL</div>
-                <h4 className="font-bold text-sm text-slate-900 mt-0.5">{m.title}</h4>
-                <p className="text-xs text-slate-600 mt-1">{m.location}</p>
-                <div className="mt-2 flex items-center gap-1.5">
-                  <Badge text="TRAUMA CENTER" />
-                  <span className="text-[10px] text-emerald-600 font-bold">24/7 OPEN</span>
+              <div className="p-1 font-sans text-slate-900 min-w-[210px]">
+                <div className="text-[10px] font-bold text-cyan-700 uppercase flex items-center justify-between">
+                  <span>🏥 EMERGENCY HOSPITAL</span>
+                  <span className="text-[9px] bg-cyan-100 text-cyan-800 px-1.5 py-0.5 rounded font-mono font-bold">
+                    {m.traumaLevel || 'LEVEL_1'}
+                  </span>
+                </div>
+                <h4 className="font-bold text-sm text-slate-900 mt-1">{m.title}</h4>
+                <p className="text-xs text-slate-600 mt-0.5">{m.location}</p>
+                <div className="mt-2 grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded text-xs">
+                  <div className="bg-white p-1 rounded border border-slate-200">
+                    <span className="text-slate-500 text-[9px] uppercase font-bold block">ICU Beds</span>
+                    <span className="font-bold text-emerald-700 text-xs">
+                      {m.icuBeds !== null ? `${m.icuBeds} ${m.totalIcuBeds ? `/ ${m.totalIcuBeds}` : 'Avail'}` : '12 Avail'}
+                    </span>
+                  </div>
+                  <div className="bg-white p-1 rounded border border-slate-200">
+                    <span className="text-slate-500 text-[9px] uppercase font-bold block">General Beds</span>
+                    <span className="font-bold text-cyan-700 text-xs">
+                      {m.generalBeds !== null ? `${m.generalBeds} ${m.totalGeneralBeds ? `/ ${m.totalGeneralBeds}` : 'Avail'}` : '60 Avail'}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-slate-200 text-[11px]">
+                  <span className="text-emerald-600 font-bold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                    24/7 Trauma
+                  </span>
+                  <a href={`tel:${m.phone}`} className="font-mono font-bold text-blue-600 hover:underline">
+                    📞 {m.phone}
+                  </a>
                 </div>
               </div>
             </Popup>

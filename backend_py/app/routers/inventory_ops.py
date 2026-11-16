@@ -120,6 +120,17 @@ def list_requests_root(
                     "QUANTITYAPPROVED": itm.quantity_approved,
                     "UNIT": itm.resource.unit if itm.resource else "Units"
                 } for itm in r.items
+            ],
+            "items": [
+                {
+                    "item_id": getattr(itm, "request_item_id", None),
+                    "request_item_id": getattr(itm, "request_item_id", None),
+                    "resource_id": itm.resource_id,
+                    "resource_name": itm.resource.resource_name if itm.resource else "Item",
+                    "quantity_requested": itm.quantity_requested,
+                    "quantity_approved": itm.quantity_approved,
+                    "unit": itm.resource.unit if itm.resource else "Units"
+                } for itm in r.items
             ]
         })
     return {"success": True, "count": len(results), "requests": results}

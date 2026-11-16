@@ -30,7 +30,7 @@ export default function MapPage() {
             <span>Interactive Geospatial Command Map</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Real-time coordinates extracted from Oracle Database (LOCATIONS, INCIDENTS, SHELTERS, WAREHOUSES)
+            Real-time coordinates extracted from Database (LOCATIONS, INCIDENTS, HOSPITALS, SHELTERS, WAREHOUSES)
           </p>
         </div>
         <button

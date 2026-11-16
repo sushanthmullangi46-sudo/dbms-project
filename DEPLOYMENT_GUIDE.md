@@ -5,11 +5,11 @@
 
 ## 1. Deployment Topology Overview
 
-The UDRRMS platform supports three distinct deployment modes depending on organizational infrastructure and operational readiness:
+The repository supports local development, static frontend hosting with a separately deployed API, and a Node gateway deployment. Container and Linux examples below are starting points and require environment-specific configuration before production use.
 
 ```
-[Strategy A: Standalone Cloud Demo]
-  GitHub Pages (gh-pages branch) -> In-Browser Storage Adapter -> Zero-Backend Host
+[Static Frontend]
+  Static Host -> HTTPS API Base URL -> FastAPI -> Persistent Database
 
 [Strategy B: Enterprise Containerized]
   Docker Compose -> Nginx Reverse Proxy -> Node Gateway (:5000) -> FastAPI (:8000) -> Persistent DB
@@ -20,31 +20,20 @@ The UDRRMS platform supports three distinct deployment modes depending on organi
 
 ---
 
-## 2. Strategy A: GitHub Pages Live Demo Deployment
+## 2. Static Frontend Deployment
 
 The repository includes an automated build pipeline deploying the compiled Single-Page Application (SPA) to GitHub Pages.
 
-### Live Demo URL:
-**[https://sushanthmullangi46-sudo.github.io/dbms-project/](https://sushanthmullangi46-sudo.github.io/dbms-project/)**
-
-### Standalone Fallback Architecture:
-When running on static cloud hosting without a connected Python engine, the client Axios adapter activates [`frontend/src/api/client.js`](file:///c:/Users/mdpul/OneDrive/Desktop/DBMS%20PROJECT/frontend/src/api/client.js) fallback resolution:
-- Intercepts outbound `/api/v1` calls in-browser.
-- Returns comprehensive 3NF relational schemas for all 4 roles.
-- Supports report submissions, verification transitions, and stock reservations in local storage.
+### Static frontend deployment
+The frontend is static, but operational workflows require the FastAPI service and its database. There is no in-browser mock adapter: API requests fail visibly when the service cannot be reached. Deploy the API separately, configure `VITE_API_BASE_URL` to its `/api/v1` endpoint at build time, and configure the API CORS allowlist for the deployed site before publishing the frontend.
 
 ### Deployment Commands:
 ```bash
 # 1. Build the frontend production bundle
 npm --prefix frontend run build
 
-# 2. Deploy dist directory to gh-pages branch
-git checkout gh-pages
-# Copy built dist files to root, commit, and push:
-git add .
-git commit -m "deploy: update live production build"
-git push origin gh-pages
-git checkout main
+# 2. Publish the built frontend to your static host
+# Configure VITE_API_BASE_URL before this build and point it at a deployed API.
 ```
 
 ---
@@ -73,8 +62,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:////data/udrrms.db
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - USE_SQLITE_DEV=true
+      - DATABASE_FILE=/data/udrrms.db
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS}
     volumes:
       - udr-data:/data
     restart: always
@@ -116,8 +107,10 @@ WorkingDirectory=/opt/udrrms/backend_py
 ExecStart=/opt/udrrms/venv/bin/gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
 Restart=always
 RestartSec=5
-Environment=DATABASE_URL=sqlite:////opt/udrrms/database/udrrms.db
-Environment=JWT_SECRET_KEY=production_vault_secret_key_2026
+Environment=USE_SQLITE_DEV=true
+Environment=DATABASE_FILE=/opt/udrrms/database/udrrms.db
+Environment=JWT_SECRET=<set-a-long-random-secret>
+Environment=CORS_ORIGINS=https://your-frontend.example
 
 [Install]
 WantedBy=multi-user.target

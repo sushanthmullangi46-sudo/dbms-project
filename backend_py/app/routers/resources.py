@@ -32,8 +32,8 @@ def list_resources(
 
     resource_list = []
     for r in items:
-        total_qty = sum(inv.quantity_available for inv in r.inventory_records) if r.inventory_records else 250
-        first_wh = r.inventory_records[0].warehouse.warehouse_name if (r.inventory_records and r.inventory_records[0].warehouse) else "Hebbal Central Disaster Reserve Depot"
+        total_qty = sum(inv.quantity_available for inv in r.inventory_records)
+        first_wh = next((inv.warehouse.warehouse_name for inv in r.inventory_records if inv.warehouse), None)
         avail_status = "AVAILABLE" if total_qty > 0 else "ALLOCATED"
         if availabilityStatus and availabilityStatus.upper() != "ALL" and avail_status != availabilityStatus.upper():
             continue
@@ -45,8 +45,8 @@ def list_resources(
             "RESOURCENAME": r.resource_name,
             "resource_name": r.resource_name,
             "title": r.resource_name,
-            "REGISTRATIONNUMBER": f"AST-2026-{r.resource_id:04d}",
-            "registration_number": f"AST-2026-{r.resource_id:04d}",
+            "REGISTRATIONNUMBER": None,
+            "registration_number": None,
             "CATEGORY": r.category,
             "category": r.category,
             "QUANTITY": total_qty,
@@ -54,13 +54,13 @@ def list_resources(
             "quantity_available": total_qty,
             "UNIT": r.unit,
             "unit": r.unit,
-            "CONDITION": "OPERATIONAL",
-            "condition": "OPERATIONAL",
+            "CONDITION": None,
+            "condition": None,
             "AVAILABILITYSTATUS": avail_status,
             "availability_status": avail_status,
             "status": avail_status,
-            "PROVIDERNAME": "State Disaster Logistics Authority",
-            "provider_name": "State Disaster Logistics Authority",
+            "PROVIDERNAME": None,
+            "provider_name": None,
             "LOCATIONNAME": first_wh,
             "location_name": first_wh,
             "is_perishable": r.is_perishable,
@@ -116,12 +116,18 @@ def list_inventory_direct(
 @router.post("/replenishment")
 def replenish_stock(
     body: dict,
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["COORDINATOR", "DISASTER_OFFICER"])),
     db: Session = Depends(get_db)
 ):
-    w_id = body.get("warehouse_id") or body.get("warehouseId") or 1
-    r_id = body.get("resource_id") or body.get("resourceId") or 1
-    qty = body.get("quantity_to_add") or body.get("quantity") or 500
+    w_id = body.get("warehouse_id") or body.get("warehouseId")
+    r_id = body.get("resource_id") or body.get("resourceId")
+    qty = body.get("quantity_to_add") or body.get("quantity")
+    if not all(isinstance(value, int) and value > 0 for value in (w_id, r_id, qty)):
+        raise HTTPException(status_code=422, detail="warehouse_id, resource_id, and a positive quantity are required")
+    if not db.query(Warehouse).filter(Warehouse.warehouse_id == w_id).first():
+        raise HTTPException(status_code=404, detail="Warehouse not found")
+    if not db.query(Resource).filter(Resource.resource_id == r_id).first():
+        raise HTTPException(status_code=404, detail="Resource not found")
 
     inv = db.query(Inventory).filter(Inventory.warehouse_id == w_id, Inventory.resource_id == r_id).first()
     if inv:
@@ -134,7 +140,7 @@ def replenish_stock(
 
 @router.get("/warehouses")
 def list_warehouses_with_inventory(
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["COORDINATOR", "DISASTER_OFFICER"])),
     db: Session = Depends(get_db)
 ):
     warehouses = db.query(Warehouse).all()
@@ -166,12 +172,19 @@ def list_warehouses_with_inventory(
 @router.post("/requests", status_code=status.HTTP_201_CREATED)
 def create_resource_request(
     req_in: ResourceRequestCreate,
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["CITIZEN", "FIELD_RESPONDER", "DISASTER_OFFICER"])),
     db: Session = Depends(get_db)
 ):
     """
     Stage 5: Emergency Resource Assessment & Request
     """
+    if current_user.role.role_name == "CITIZEN":
+        owns_incident = any(
+            report.disaster_id == req_in.disaster_id
+            for report in current_user.reports
+        )
+        if not owns_incident:
+            raise HTTPException(status_code=403, detail="Citizens may only request resources for their own reported emergencies")
     items_dicts = [{"resource_id": i.resource_id, "quantity_requested": i.quantity_requested} for i in req_in.items]
     req = WorkflowService.create_resource_request(
         db=db,
@@ -194,6 +207,10 @@ def list_resource_requests(
     db: Session = Depends(get_db)
 ):
     query = db.query(ResourceRequest)
+    if current_user.role.role_name in ("CITIZEN", "FIELD_RESPONDER"):
+        query = query.filter(ResourceRequest.requested_by == current_user.user_id)
+    elif current_user.role.role_name not in ("COORDINATOR", "DISASTER_OFFICER", "RESOURCE_PROVIDER"):
+        raise HTTPException(status_code=403, detail="You may not view resource requests")
     if status_filter:
         query = query.filter(ResourceRequest.status == status_filter.upper())
     requests = query.order_by(ResourceRequest.requested_at.desc()).all()
@@ -212,8 +229,11 @@ def list_resource_requests(
 
         item_list = [
             {
+                "item_id": getattr(itm, "request_item_id", None),
+                "request_item_id": getattr(itm, "request_item_id", None),
                 "resource_id": itm.resource_id,
                 "resource_name": itm.resource.resource_name if itm.resource else "Item",
+                "category": getattr(itm.resource, "category", "SUPPLIES") if itm.resource else "SUPPLIES",
                 "unit": itm.resource.unit if itm.resource else "Units",
                 "quantity_requested": itm.quantity_requested,
                 "quantity_approved": itm.quantity_approved
@@ -533,22 +553,23 @@ def update_resource_catalog_entry(
 # =====================================================================
 
 class RequestRejectBody(BaseModel):
-    reason: Optional[str] = "Insufficient regional stock or duplicated requirement."
+    reason: str = Field(min_length=5, max_length=1000)
 
 @router.post("/requests/{request_id}/reject")
 def reject_resource_request(
     request_id: int,
     body: RequestRejectBody,
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["COORDINATOR", "DISASTER_OFFICER"])),
     db: Session = Depends(get_db)
 ):
     req = db.query(ResourceRequest).filter(ResourceRequest.request_id == request_id).first()
     if not req:
         raise HTTPException(status_code=404, detail="Resource request not found.")
+    if req.status not in ("PENDING_APPROVAL", "PARTIALLY_APPROVED"):
+        raise HTTPException(status_code=409, detail=f"Request cannot be rejected while it is {req.status}")
 
     req.status = "REJECTED"
-    req.notes = f"REJECTED by {current_user.full_name}: {body.reason}"
-    db.commit()
+    req.rejection_reason = body.reason.strip()
 
     # Log to audit trail
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -573,7 +594,7 @@ class InventoryAdjustBody(BaseModel):
 @router.post("/inventory/adjust")
 def adjust_inventory_stock(
     body: InventoryAdjustBody,
-    current_user: UserAccount = Depends(get_current_user),
+    current_user: UserAccount = Depends(require_role(["COORDINATOR", "DISASTER_OFFICER"])),
     db: Session = Depends(get_db)
 ):
     inv = db.query(Inventory).filter(Inventory.inventory_id == body.inventory_id).first()

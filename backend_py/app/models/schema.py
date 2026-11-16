@@ -318,6 +318,7 @@ class Delivery(Base):
 
     warehouse = relationship("Warehouse", back_populates="deliveries")
     items = relationship("DeliveryItem", back_populates="delivery")
+    disaster = relationship("Disaster")
 
 # 20. DELIVERY_ITEM
 class DeliveryItem(Base):
@@ -330,6 +331,7 @@ class DeliveryItem(Base):
     quantity_damaged = Column(Integer, default=0, nullable=False)
 
     delivery = relationship("Delivery", back_populates="items")
+    resource = relationship("Resource")
 
 # 21. SHELTER
 class Shelter(Base):

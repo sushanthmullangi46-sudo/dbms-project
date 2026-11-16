@@ -4,41 +4,48 @@ from app.database import get_db
 from app.models.schema import UserAccount, Role, Citizen
 from app.schemas.dtos import UserRegister, UserLogin, TokenResponse, UserProfile
 from app.auth.security import get_password_hash, verify_password, create_access_token, get_current_user
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/auth", tags=["Authentication & Identity"])
 
 @router.post("/register", response_model=TokenResponse)
 def register(user_in: UserRegister, db: Session = Depends(get_db)):
-    existing = db.query(UserAccount).filter(UserAccount.email == user_in.email.lower()).first()
+    email = user_in.email.strip().lower()
+    existing = db.query(UserAccount).filter(UserAccount.email == email).first()
     if existing:
         raise HTTPException(status_code=400, detail="An account with this email address already exists")
 
-    role = db.query(Role).filter(Role.role_name == user_in.role_name.upper()).first()
+    # Public registration must never grant privileged roles. Staff accounts are
+    # provisioned by an administrator through a separately authorized workflow.
+    role = db.query(Role).filter(Role.role_name == "CITIZEN").first()
     if not role:
-        # Default fallback to CITIZEN if not found
-        role = db.query(Role).filter(Role.role_name == "CITIZEN").first()
+        raise HTTPException(status_code=503, detail="Citizen registration is unavailable: role data is not initialized")
 
     user = UserAccount(
         role_id=role.role_id,
         full_name=user_in.full_name,
-        email=user_in.email.lower(),
+        email=email,
         phone=user_in.phone,
         password_hash=get_password_hash(user_in.password),
         account_status="ACTIVE"
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    if role.role_name == "CITIZEN":
-        citizen = Citizen(
+    try:
+        db.flush()
+        db.add(Citizen(
             user_id=user.user_id,
             address=user_in.address,
             emergency_contact=user_in.emergency_contact,
             special_needs=user_in.special_needs
-        )
-        db.add(citizen)
+        ))
         db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="An account with this email address already exists")
+    except Exception:
+        db.rollback()
+        raise
 
     token = create_access_token({"user_id": user.user_id, "role": role.role_name})
     return TokenResponse(

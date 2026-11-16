@@ -232,7 +232,7 @@ class TestMandatoryPersistenceAndSynchronization:
 
         assign_res = client.post("/api/v1/missions", json={
             "incidentId": 1,
-            "responderId": 2,
+            "responderId": 1,
             "priority": "P1"
         }, headers={"Authorization": f"Bearer {off_token}"})
         assert assign_res.status_code == 201

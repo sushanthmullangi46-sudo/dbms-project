@@ -250,7 +250,21 @@ class TestUDRRMSWorkflow(unittest.TestCase):
 
     # Test 10: Shelter capacity enforcement
     def test_10_shelter_capacity_enforcement(self):
-        # Shelter 4 (RT Nagar) has capacity 200, current occupancy 195 (5 spaces left)
+        # Create an isolated capacity scenario rather than assuming fabricated seed rows.
+        db_seed = SessionLocal()
+        if not db_seed.query(Shelter).filter_by(shelter_id=4).first():
+            db_seed.add(Shelter(
+                shelter_id=4,
+                location_id=1006,
+                shelter_name="Workflow Capacity Test Shelter",
+                capacity=200,
+                current_occupancy=195,
+                status="OPEN"
+            ))
+            db_seed.commit()
+        db_seed.close()
+
+        # Shelter 4 has capacity 200 and occupancy 195 (5 spaces left).
         # Attempt to register 10 evacuees (must fail with 400)
         res_full = self.client.post("/api/v1/shelters/register", json={
             "shelter_id": 4,

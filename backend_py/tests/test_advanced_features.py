@@ -68,7 +68,7 @@ def test_roadblocks_feed_and_reporting(officer_token):
     res_list = client.get("/api/v1/roadblocks")
     assert res_list.status_code == 200, res_list.text
     assert res_list.json()["success"] is True
-    assert len(res_list.json()["roadblocks"]) >= 1
+    assert res_list.json()["roadblocks"] == []
 
     # 2. Report roadblock
     res_post = client.post(
@@ -96,14 +96,13 @@ def test_evacuation_plans_and_progress(officer_token):
     res_plans = client.get("/api/v1/evacuation/plans")
     assert res_plans.status_code == 200, res_plans.text
     plans = res_plans.json()["plans"]
-    assert len(plans) >= 1
-    assert "assigned_squads" in plans[0]
+    assert plans == []
 
     # 2. Create new plan
     res_create = client.post(
         "/api/v1/evacuation/plans",
         json={
-            "location_id": 1,
+            "location_id": 1001,
             "zone_name": "Nagawara Lake Shoreline Colony",
             "risk_level": "CRITICAL",
             "priority": "P1",
@@ -133,8 +132,8 @@ def test_evacuation_plans_and_progress(officer_token):
     )
     assert res_prog.status_code == 200, res_prog.text
 
-def test_intelligent_squad_recommendations():
-    res = client.get("/api/v1/teams/recommendations?disaster_id=1")
+def test_intelligent_squad_recommendations(officer_token):
+    res = client.get("/api/v1/teams/recommendations?disaster_id=1", headers={"Authorization": f"Bearer {officer_token}"})
     assert res.status_code == 200, res.text
     data = res.json()
     assert data["success"] is True
@@ -142,7 +141,8 @@ def test_intelligent_squad_recommendations():
     assert len(squads) >= 1
     assert "match_score_pct" in squads[0]
     assert "distance_km" in squads[0]
-    assert "estimated_eta_minutes" in squads[0]
+    assert squads[0]["estimated_eta_minutes"] is None
+    assert squads[0]["routing_available"] is False
     # Check sorted descending
     for i in range(len(squads) - 1):
         assert squads[i]["match_score_pct"] >= squads[i + 1]["match_score_pct"]
