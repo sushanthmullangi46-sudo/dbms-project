@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Lock, Mail, ArrowRight, UserCheck, ShieldCheck, Boxes, UserPlus, Phone, MapPin, Compass } from 'lucide-react';
+import { ShieldAlert, Lock, Mail, ArrowRight, UserCheck, ShieldCheck, Boxes, UserPlus, Phone, MapPin, Compass, Database, Terminal } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import SqlSchemaModal from '../../components/database/SqlSchemaModal';
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
   
   // Login form state
   const [email, setEmail] = useState('officer@udrrms.com');
@@ -320,13 +322,55 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          {/* DBMS Project Tables & SQL Schema Inspector Button */}
+          <div className="mt-4 pt-4 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsSqlModalOpen(true)}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950/40 hover:border-cyan-400 hover:from-slate-900 hover:to-cyan-900/40 transition-all shadow-lg shadow-cyan-950/30 group text-left cursor-pointer"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 group-hover:scale-110 transition-transform">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                      View All 34 SQL Database Tables
+                    </span>
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                      SQL OUTPUT
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Click to inspect relational schemas, row counts, and authentic SQL CLI terminal output
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-1.5 text-cyan-400 font-mono text-xs font-bold group-hover:translate-x-1 transition-transform">
+                <Terminal className="w-4 h-4" />
+                <span className="hidden sm:inline">Inspect</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Target Oracle DB Footer Tag */}
-        <div className="flex items-center justify-center space-x-2 text-[11px] text-slate-500 mt-4 font-mono">
+        <div 
+          onClick={() => setIsSqlModalOpen(true)}
+          className="cursor-pointer hover:text-cyan-400 transition-colors flex items-center justify-center space-x-2 text-[11px] text-slate-500 mt-4 font-mono"
+          title="Click to open SQL Schema Inspector"
+        >
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span>Oracle Database 21c (Enterprise 3NF Schema) • FastAPI Engine</span>
+          <span>Oracle Database 21c (34 Tables • 3NF Schema) • Click to View SQL Tables</span>
         </div>
+
+        {/* SQL Schema & Table Inspector Modal */}
+        <SqlSchemaModal
+          isOpen={isSqlModalOpen}
+          onClose={() => setIsSqlModalOpen(false)}
+        />
       </div>
     </div>
   );

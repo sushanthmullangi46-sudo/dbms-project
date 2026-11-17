@@ -64,10 +64,12 @@ app.add_middleware(
 from app.routers import (
     auth, reports, verification, incidents, teams,
     resources, deliveries, shelters, medical, analytics, map_nodes,
-    missions, inventory_ops, alerts, roadblocks, evacuation, feedback, sos
+    missions, inventory_ops, alerts, roadblocks, evacuation, feedback, sos,
+    schema_inspector
 )
 
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(schema_inspector.router, prefix=settings.API_V1_STR)
 app.include_router(reports.router, prefix=settings.API_V1_STR)
 app.include_router(verification.router, prefix=settings.API_V1_STR)
 app.include_router(incidents.router, prefix=settings.API_V1_STR)
