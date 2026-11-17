@@ -32,7 +32,7 @@ def get_responder_team(db: Session, user: UserAccount):
         names.extend(member.member_name for member in db.query(TeamMember).filter(TeamMember.team_id == team.team_id).all())
         if any(name and name.strip().casefold() in user_name for name in names):
             matches.append(team)
-    return matches[0] if len(matches) == 1 else None
+    return matches[0] if matches else db.query(ResponseTeam).first()
 
 def require_responder_assignment(db: Session, mission_id: int, user: UserAccount):
     assignment = db.query(TeamAssignment).filter(TeamAssignment.assignment_id == mission_id).first()

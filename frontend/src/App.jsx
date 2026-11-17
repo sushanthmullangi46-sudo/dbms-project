@@ -200,6 +200,8 @@ export default function App() {
         <Route path="requests" element={<CoordinatorRequestsPage />} />
         <Route path="deliveries" element={<CoordinatorDeliveriesPage />} />
         <Route path="inventory" element={<CoordinatorInventoryPage />} />
+        <Route path="map" element={<MapPage />} />
+        <Route path="analytics" element={<OfficerAnalyticsPage />} />
       </Route>
 
       {/* 4. Tactical Field Responder Portal (RBAC: FIELD_RESPONDER, COMMAND_CENTER, DISASTER_OFFICER) */}
@@ -215,6 +217,7 @@ export default function App() {
         <Route path="dashboard" element={<ResponderDashboard />} />
         <Route path="missions" element={<ResponderMissions />} />
         <Route path="history" element={<ResponderHistory />} />
+        <Route path="map" element={<MapPage />} />
       </Route>
 
       {/* 5. Resource Provider Portal (RBAC: RESOURCE_PROVIDER, COORDINATOR, COMMAND_CENTER) */}

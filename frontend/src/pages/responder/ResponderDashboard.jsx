@@ -9,7 +9,8 @@ import {
   CheckCircle2, 
   Clock, 
   Radio,
-  FileText
+  FileText,
+  Map
 } from 'lucide-react';
 import api from '../../api/client';
 import Badge from '../../components/common/Badge';
@@ -123,6 +124,28 @@ export default function ResponderDashboard() {
           </p>
         </div>
       )}
+
+      {/* GIS Operations Map Banner */}
+      <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900 border border-blue-500/30 rounded-xl p-5 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <div className="p-3 bg-blue-500/20 border border-blue-400/30 rounded-xl text-blue-400">
+            <Map className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-bold text-white text-base">Disaster Operations GIS Map</h3>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Access real-time incident hazard perimeters, emergency hospitals, evacuation shelters, and live responder positions.
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/responder/map"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-md transition-all flex items-center space-x-2 shrink-0"
+        >
+          <Map className="w-4 h-4" />
+          <span>Launch Disaster Map</span>
+        </Link>
+      </div>
 
       {/* Responder Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

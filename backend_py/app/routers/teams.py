@@ -264,3 +264,84 @@ def get_team_members(
             "joined_at": m.joined_at.isoformat() if m.joined_at else None
         })
     return {"success": True, "team_id": team_id, "team_name": team.team_name, "count": len(results), "members": results}
+
+
+def auto_allocate_squad_for_disaster(db: Session, disaster: Disaster, actor_user_id: int = 1):
+    d_type = (disaster.disaster_type or "").upper()
+    d_name = (disaster.disaster_name or "").upper()
+
+    spec = "WATER_RESCUE"
+    if any(k in d_type or k in d_name for k in ["FIRE", "HAZMAT", "GAS", "EXPLOSION", "CHEMICAL"]):
+        spec = "HAZMAT"
+    elif any(k in d_type or k in d_name for k in ["EARTHQUAKE", "COLLAPSE", "LANDSLIDE", "BUILDING"]):
+        spec = "COLLAPSE_SAR"
+    elif any(k in d_type or k in d_name for k in ["MEDIC", "EPIDEMIC", "CASUALTY", "INJUR"]):
+        spec = "MEDICAL_TRIAGE"
+    elif any(k in d_type or k in d_name for k in ["FLOOD", "WATER", "CYCLONE", "STORM", "TSUNAMI"]):
+        spec = "WATER_RESCUE"
+
+    existing = db.query(TeamAssignment).filter(
+        TeamAssignment.disaster_id == disaster.disaster_id,
+        TeamAssignment.assignment_status.notin_(["COMPLETED", "CANCELLED"])
+    ).first()
+    if existing:
+        return existing
+
+    team = db.query(ResponseTeam).filter(
+        ResponseTeam.specialization == spec,
+        ResponseTeam.readiness_status == "AVAILABLE"
+    ).first()
+
+    if not team:
+        team = db.query(ResponseTeam).filter(ResponseTeam.readiness_status == "AVAILABLE").first()
+
+    if not team:
+        team = db.query(ResponseTeam).filter(ResponseTeam.specialization == spec).first()
+        if not team:
+            team = db.query(ResponseTeam).first()
+
+    if team:
+        team.readiness_status = "ASSIGNED"
+        from datetime import datetime
+        assignment = TeamAssignment(
+            disaster_id=disaster.disaster_id,
+            team_id=team.team_id,
+            assigned_by=actor_user_id or 1,
+            assignment_status="ASSIGNED",
+            assigned_at=datetime.utcnow()
+        )
+        db.add(assignment)
+        db.flush()
+
+        loc = disaster.location
+        base_lat = float(loc.latitude) if loc and loc.latitude else 12.9716
+        base_lng = float(loc.longitude) if loc and loc.longitude else 77.5946
+
+        db.add(RescueLocationHistory(
+            mission_id=assignment.assignment_id,
+            team_id=team.team_id,
+            latitude=base_lat - 0.015,
+            longitude=base_lng - 0.015,
+            speed=35.0,
+            recorded_at=datetime.utcnow()
+        ))
+        db.commit()
+        db.refresh(assignment)
+        return assignment
+    return None
+
+
+@router.post("/reset-all-available")
+def reset_all_teams_available(
+    db: Session = Depends(get_db)
+):
+    teams = db.query(ResponseTeam).all()
+    for t in teams:
+        t.readiness_status = "AVAILABLE"
+    db.commit()
+    return {
+        "success": True,
+        "message": f"All {len(teams)} tactical rescue teams marked AVAILABLE.",
+        "count": len(teams)
+    }
+

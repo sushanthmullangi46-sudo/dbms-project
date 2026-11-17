@@ -45,7 +45,7 @@ export default function Sidebar() {
       { name: 'Responder Terminal', path: '/responder/dashboard', icon: LayoutDashboard },
       { name: 'Tactical Missions', path: '/responder/missions', icon: Compass },
       { name: 'Mission History', path: '/responder/history', icon: Clock },
-      { name: 'Disaster Map', path: '/officer/map', icon: Map },
+      { name: 'Disaster Map', path: '/responder/map', icon: Map },
       { name: 'Emergency Requests', path: '/officer/requests', icon: Package }
     ];
   } else if (isCoordinator) {
@@ -54,8 +54,8 @@ export default function Sidebar() {
       { name: 'Approval & Allocation', path: '/coordinator/requests', icon: Package },
       { name: 'Dispatch & Delivery', path: '/coordinator/deliveries', icon: Truck },
       { name: 'Warehouses & Stocks', path: '/coordinator/inventory', icon: Warehouse },
-      { name: 'Disaster Map', path: '/officer/map', icon: Map },
-      { name: 'Post-Incident Analytics', path: '/officer/analytics', icon: BarChart3 }
+      { name: 'Disaster Map', path: '/coordinator/map', icon: Map },
+      { name: 'Post-Incident Analytics', path: '/coordinator/analytics', icon: BarChart3 }
     ];
   } else {
     // Default to Officer / Administrator
@@ -69,9 +69,7 @@ export default function Sidebar() {
       { name: 'Relief Resources', path: '/officer/resources', icon: Boxes },
       { name: 'Inventory Management', path: '/officer/inventory', icon: Warehouse },
       { name: 'Disaster Operations Map', path: '/officer/map', icon: Map },
-      { name: 'Closure Checklist', path: '/officer/closure', icon: CheckSquare },
-      { name: 'Operational Analytics', path: '/officer/analytics', icon: BarChart3 },
-      { name: 'Audit Trail Logs', path: '/officer/audit-logs', icon: FileText }
+      { name: 'Operational Analytics', path: '/officer/analytics', icon: BarChart3 }
     ];
   }
 

@@ -1,20 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Phone, MapPin, Award, Shield } from 'lucide-react';
+import { Users, Phone, MapPin, Award, Shield, RotateCw, CheckCircle2 } from 'lucide-react';
 import api from '../../api/client';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
+import { useToast } from '../../context/ToastContext';
 
 export default function RespondersPage() {
   const [responders, setResponders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
+  const { success, error } = useToast();
 
-  useEffect(() => {
+  const fetchResponders = () => {
+    setLoading(true);
     api.get('/resources/responders')
       .then((res) => {
         if (res.success) setResponders(res.responders);
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchResponders();
   }, []);
+
+  const handleResetAvailable = async () => {
+    setResetting(true);
+    try {
+      const res = await api.post('/teams/reset-all-available');
+      if (res.success) {
+        success(res.message || 'All rescue teams are now marked AVAILABLE.');
+        fetchResponders();
+      }
+    } catch (err) {
+      error(err.message || 'Failed to reset team readiness.');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -28,6 +51,14 @@ export default function RespondersPage() {
             Certified urban rescue, trauma triage, HAZMAT containment, and flood piloting teams
           </p>
         </div>
+        <button
+          onClick={handleResetAvailable}
+          disabled={resetting}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center space-x-2 shrink-0 self-start sm:self-auto"
+        >
+          <RotateCw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+          <span>Make All Teams Available</span>
+        </button>
       </div>
 
       {loading ? (

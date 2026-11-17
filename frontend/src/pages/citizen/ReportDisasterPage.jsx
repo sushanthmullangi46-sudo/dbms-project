@@ -328,7 +328,8 @@ export default function ReportDisasterPage() {
         requested_supplies: requested_supplies,
         latitude: selectedCoords[0],
         longitude: selectedCoords[1],
-        address: customAddress
+        address: customAddress,
+        auto_allocate_squad: true
       };
 
       const res = await api.post('/reports', payload);

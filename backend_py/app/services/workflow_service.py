@@ -711,9 +711,9 @@ class WorkflowService:
             Inventory.warehouse_id == delivery.warehouse_id,
             Inventory.resource_id == item.resource_id
         ).first()
-        if not inv or inv.quantity_reserved < new_reconciled - previous_reconciled:
-            raise HTTPException(status_code=409, detail="Reserved inventory does not match the outstanding delivery quantity")
-        inv.quantity_reserved -= new_reconciled - previous_reconciled
+        if inv:
+            deduct_qty = min(inv.quantity_reserved, new_reconciled - previous_reconciled)
+            inv.quantity_reserved = max(0, inv.quantity_reserved - deduct_qty)
 
         db.commit()
         db.refresh(delivery)

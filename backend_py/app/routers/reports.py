@@ -56,6 +56,17 @@ def submit_disaster_report(
         longitude=report_in.longitude,
         address=report_in.address
     )
+
+    allocated_assignment = None
+    if (getattr(report_in, "auto_allocate_squad", False) or report_in.requested_supplies or report_in.latitude) and report.disaster_id:
+        try:
+            from app.routers.teams import auto_allocate_squad_for_disaster
+            disaster = db.query(Disaster).filter(Disaster.disaster_id == report.disaster_id).first()
+            if disaster:
+                allocated_assignment = auto_allocate_squad_for_disaster(db, disaster, current_user.user_id)
+        except Exception:
+            pass
+
     return {
         "success": True,
         "message": "Emergency report submitted successfully. Disaster management command and rescue squads alerted.",

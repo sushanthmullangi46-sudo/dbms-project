@@ -50,6 +50,7 @@ class DisasterReportCreate(BaseModel):
     address: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    auto_allocate_squad: Optional[bool] = False
 
 
 class ReportVerificationAction(BaseModel):

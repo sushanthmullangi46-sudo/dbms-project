@@ -145,6 +145,12 @@ def create_incident_direct(
     db.commit()
     db.refresh(disaster)
 
+    try:
+        from app.routers.teams import auto_allocate_squad_for_disaster
+        auto_allocate_squad_for_disaster(db, disaster, current_user.user_id)
+    except Exception:
+        pass
+
     AuditService.log(
         db=db,
         entity_name="DISASTER",

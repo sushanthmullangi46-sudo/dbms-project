@@ -140,11 +140,9 @@ def dispatch_delivery(
         Inventory.resource_id == resource_id
     ).first()
     if inv:
-        if inv.quantity_reserved >= qty:
-            inv.quantity_reserved -= qty
-            inv.quantity_available = max(0, inv.quantity_available - qty)
-        else:
-            inv.quantity_available = max(0, inv.quantity_available - qty)
+        reserve_qty = min(inv.quantity_available, qty)
+        inv.quantity_available = max(0, inv.quantity_available - reserve_qty)
+        inv.quantity_reserved += reserve_qty
 
     delivery = Delivery(
         warehouse_id=warehouse_id,
@@ -209,11 +207,16 @@ def confirm_delivery_direct(
             "delivered_at": delivery.delivered_at
         }
 
+    item = db.query(DeliveryItem).filter(DeliveryItem.delivery_id == del_id).first()
+    qty_to_receive = body.quantity_received
+    if not qty_to_receive or qty_to_receive <= 0:
+        qty_to_receive = item.quantity_dispatched if item else 1
+
     delivery = WorkflowService.confirm_delivery(
         db=db,
         delivery_id=del_id,
         user=current_user,
-        quantity_received=body.quantity_received or 0,
+        quantity_received=qty_to_receive,
         quantity_damaged=body.quantity_damaged or 0,
         receiver_name=body.received_by or "Field Officer",
         proof_note=body.proof_of_delivery or "Signed field receipt note"
