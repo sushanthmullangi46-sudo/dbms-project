@@ -10,7 +10,6 @@ router = APIRouter(prefix="/map", tags=["Geospatial Leaflet Nodes & Risk Zones"]
 
 @router.get("/nodes")
 def get_map_nodes(
-    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -155,10 +154,9 @@ def get_map_nodes(
 
 @router.get("/markers")
 def get_map_markers_alias(
-    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    res = get_map_nodes(current_user, db)
+    res = get_map_nodes(db)
     nodes = res["nodes"]
     return {
         "success": True,

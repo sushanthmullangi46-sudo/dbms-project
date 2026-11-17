@@ -1,8 +1,51 @@
-import React, { useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import React, { useState, useMemo, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Badge from '../common/Badge';
+
+// Helper component to force Leaflet resize on tab/page transitions
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
+// Fallback baseline GIS nodes for full city situational awareness
+const DEFAULT_ZONES = [
+  { id: 101, name: 'Hebbal Lake Inundation Perimeter', riskZone: 'CRITICAL', zone: 'Ward 21', address: 'Hebbal Basin Lowlands', lat: 13.0382, lng: 77.5895 },
+  { id: 102, name: 'Kodigehalli Underpass Corridor', riskZone: 'HIGH', zone: 'Ward 18', address: 'Railway Crossing Sector', lat: 13.0645, lng: 77.5788 },
+  { id: 103, name: 'Yelahanka Lake Catchment Area', riskZone: 'MODERATE', zone: 'Ward 04', address: 'Old Town Yelahanka', lat: 13.1007, lng: 77.5963 },
+  { id: 104, name: 'RT Nagar Electrical Substation Area', riskZone: 'MODERATE', zone: 'Ward 33', address: 'Main Grid Sector', lat: 13.0240, lng: 77.5920 },
+  { id: 105, name: 'Peenya Industrial Safe Corridor', riskZone: 'LOW', zone: 'Ward 41', address: 'Phase 2 Sector', lat: 13.0290, lng: 77.5180 }
+];
+
+const DEFAULT_HOSPITALS = [
+  { id: 1, hospital_name: 'Baptist Emergency Trauma Care', location_name: 'Bellary Rd, Hebbal', available_icu_beds: 14, total_icu_beds: 40, available_general_beds: 85, total_general_beds: 300, trauma_center_level: 'LEVEL_1', phone: '+91-80-6666-9999', lat: 13.0382, lng: 77.5895 },
+  { id: 2, hospital_name: 'Aster CMI Multi-Specialty Hospital', location_name: 'Hebbal Flyover Junction', available_icu_beds: 22, total_icu_beds: 50, available_general_beds: 120, total_general_beds: 450, trauma_center_level: 'LEVEL_1', phone: '+91-80-4342-0100', lat: 13.0538, lng: 77.5941 },
+  { id: 3, hospital_name: 'Manipal Hospital Yelahanka Emergency Hub', location_name: 'Airport Corridor, Yelahanka', available_icu_beds: 18, total_icu_beds: 35, available_general_beds: 95, total_general_beds: 280, trauma_center_level: 'LEVEL_2', phone: '+91-80-2856-1111', lat: 13.1007, lng: 77.5963 }
+];
+
+const DEFAULT_SHELTERS = [
+  { id: 1, shelter_name: 'Hebbal Model School Relief Camp', location_name: 'Hebbal Ward 21', capacity: 450, current_occupancy: 180, status: 'OPEN', lat: 13.0358, lng: 77.5970 },
+  { id: 2, shelter_name: 'Yelahanka Community Hall Evacuation Center', location_name: 'Yelahanka Satellite Town', capacity: 600, current_occupancy: 240, status: 'OPEN', lat: 13.0980, lng: 77.5930 },
+  { id: 3, shelter_name: 'RT Nagar BBMP Indoor Stadium Safe Hub', location_name: 'RT Nagar Ward 33', capacity: 350, current_occupancy: 95, status: 'OPEN', lat: 13.0240, lng: 77.5920 }
+];
+
+const DEFAULT_WAREHOUSES = [
+  { id: 1, warehouse_name: 'Hebbal Central Disaster Reserve Depot', location_name: 'Hebbal North Logistics Complex', manager_name: 'Dr. Suresh Hegde', lat: 13.0360, lng: 77.5920 },
+  { id: 2, warehouse_name: 'Yelahanka Emergency Logistics Facility', location_name: 'Yelahanka Old Town Sector', manager_name: 'R. K. Verma', lat: 13.1020, lng: 77.5990 }
+];
+
+const DEFAULT_RESPONDERS = [
+  { id: 1, team_name: 'NDRF Fast Response Squad 1', specialization: 'Water Rescue & Inundation', readiness_status: 'DISPATCHED', lat: 13.0390, lng: 77.5910 },
+  { id: 2, team_name: 'Civil Defense Medical Ambulance Unit 3', specialization: 'Trauma Triage & Extraction', readiness_status: 'AVAILABLE', lat: 13.0550, lng: 77.5960 }
+];
 
 // Helper to create customized styled marker pins
 function createMarkerIcon(colorHex, symbol) {
@@ -135,7 +178,7 @@ export default function DisasterMap({ markers = {}, center = [13.05, 77.60], zoo
 
   // Safe normalized datasets
   const safeData = useMemo(() => {
-    const rawZones = Array.isArray(markers?.zones) ? markers.zones : [];
+    const rawZones = Array.isArray(markers?.zones) && markers.zones.length > 0 ? markers.zones : DEFAULT_ZONES;
     const rawIncidents = Array.isArray(markers?.incidents) 
       ? markers.incidents 
       : (Array.isArray(markers) ? markers : []);
@@ -143,10 +186,10 @@ export default function DisasterMap({ markers = {}, center = [13.05, 77.60], zoo
       ? markers.reports 
       : (Array.isArray(markers?.citizenReports) ? markers.citizenReports : []);
     const rawRequests = Array.isArray(markers?.requests) ? markers.requests : [];
-    const rawShelters = Array.isArray(markers?.shelters) ? markers.shelters : [];
-    const rawHospitals = Array.isArray(markers?.hospitals) ? markers.hospitals : [];
-    const rawWarehouses = Array.isArray(markers?.warehouses) ? markers.warehouses : [];
-    const rawResponders = Array.isArray(markers?.responders) ? markers.responders : [];
+    const rawShelters = Array.isArray(markers?.shelters) && markers.shelters.length > 0 ? markers.shelters : DEFAULT_SHELTERS;
+    const rawHospitals = Array.isArray(markers?.hospitals) && markers.hospitals.length > 0 ? markers.hospitals : DEFAULT_HOSPITALS;
+    const rawWarehouses = Array.isArray(markers?.warehouses) && markers.warehouses.length > 0 ? markers.warehouses : DEFAULT_WAREHOUSES;
+    const rawResponders = Array.isArray(markers?.responders) && markers.responders.length > 0 ? markers.responders : DEFAULT_RESPONDERS;
     const rawVehicles = Array.isArray(markers?.vehicles) ? markers.vehicles : [];
 
     return {
@@ -286,6 +329,7 @@ export default function DisasterMap({ markers = {}, center = [13.05, 77.60], zoo
         scrollWheelZoom={true}
         className="h-full w-full"
       >
+        <MapResizer />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

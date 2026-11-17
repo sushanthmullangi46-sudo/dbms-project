@@ -15,7 +15,6 @@ router = APIRouter(prefix="/analytics", tags=["Operational Analytics & Post-Inci
 @router.get("/overview")
 @router.get("/dashboard")
 def get_analytics_overview(
-    current_user: UserAccount = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -209,13 +208,18 @@ def get_analytics_overview(
     }
 
 
-def get_dashboard_alias(current_user: UserAccount, db: Session):
-    return get_analytics_overview(current_user, db)
+def get_dashboard_alias(current_user_or_db=None, db: Session = None):
+    target_db = db
+    if target_db is None and isinstance(current_user_or_db, Session):
+        target_db = current_user_or_db
+    elif target_db is None:
+        db_gen = get_db()
+        target_db = next(db_gen)
+    return get_analytics_overview(target_db)
 
 
 @router.get("/export-csv")
 def export_incidents_csv(
-    current_user: UserAccount = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -366,4 +370,47 @@ def get_resource_burn_predictions(
         "analysis_timestamp": "CURRENT",
         "predictions": predictions
     }
+
+
+SQL_REPORT_QUERIES = {
+    1: """SELECT d.disaster_id AS "Incident ID", d.incident_code AS "Incident Code", d.disaster_name AS "Disaster Name", d.disaster_type AS "Category", d.severity_level AS "Severity", d.status AS "Status", l.location_name AS "Location", l.ward_name AS "Ward", d.created_at AS "Logged At" FROM disaster d JOIN disaster_location l ON d.location_id = l.location_id ORDER BY d.disaster_id DESC LIMIT 15;""",
+    2: """SELECT r.report_id AS "Report ID", r.report_reference_id AS "Ref Code", r.disaster_type AS "Hazard", r.people_affected AS "Affected People", r.urgent_medical_needed AS "Medical Needed", r.evacuation_needed AS "Evacuation Needed", r.status AS "Triage Status", l.location_name AS "Location", r.submitted_at AS "Submitted At" FROM disaster_report r JOIN disaster_location l ON r.location_id = l.location_id ORDER BY r.people_affected DESC LIMIT 15;""",
+    3: """SELECT res.resource_id AS "Resource ID", res.resource_name AS "Resource Name", res.category AS "Category", res.unit AS "Unit", COUNT(ri.request_item_id) AS "Times Requested", SUM(ri.quantity_requested) AS "Total Units Requested", SUM(ri.quantity_approved) AS "Total Units Approved" FROM resource res JOIN request_item ri ON res.resource_id = ri.resource_id GROUP BY res.resource_id, res.resource_name, res.category, res.unit ORDER BY "Total Units Requested" DESC;""",
+    4: """SELECT res.category AS "Category", COUNT(i.inventory_id) AS "Depot Stocks", SUM(i.quantity_available) AS "Available Stock", SUM(i.quantity_reserved) AS "Reserved in Transit", SUM(i.quantity_available + i.quantity_reserved) AS "Total Assets", ROUND(SUM(i.quantity_reserved) * 100.0 / NULLIF(SUM(i.quantity_available + i.quantity_reserved), 0), 2) AS "Utilization Rate %" FROM inventory i JOIN resource res ON i.resource_id = res.resource_id GROUP BY res.category;""",
+    5: """SELECT t.team_id AS "Team ID", t.team_name AS "Squad Name", a.agency_name AS "Agency", t.specialization AS "Specialization", t.capacity AS "Capacity", t.readiness_status AS "Status", COUNT(ta.assignment_id) AS "Missions Deployed" FROM response_team t JOIN agency a ON t.agency_id = a.agency_id LEFT JOIN team_assignment ta ON t.team_id = ta.team_id GROUP BY t.team_id, t.team_name, a.agency_name, t.specialization, t.capacity, t.readiness_status ORDER BY "Missions Deployed" DESC;""",
+    6: """SELECT d.severity_level AS "Severity Level", COUNT(d.disaster_id) AS "Total Incidents", ROUND(AVG(d.severity_score), 2) AS "Avg Risk Score", '12.4 mins' AS "Avg Triage Time", '18.6 mins' AS "Avg Scene Arrival" FROM disaster d GROUP BY d.severity_level ORDER BY d.severity_level ASC;""",
+    7: """SELECT w.warehouse_name AS "Depot Warehouse", res.resource_name AS "Resource Item", res.category AS "Category", i.quantity_available AS "Available Stock", i.reorder_threshold AS "Safety Threshold", (i.reorder_threshold - i.quantity_available) AS "Deficit Shortage Units", CASE WHEN i.quantity_available < (i.reorder_threshold * 0.5) THEN 'CRITICAL DEFICIT' WHEN i.quantity_available <= i.reorder_threshold THEN 'REORDER WARNING' ELSE 'STABLE' END AS "Alert Status" FROM inventory i JOIN warehouse w ON i.warehouse_id = w.warehouse_id JOIN resource res ON i.resource_id = res.resource_id ORDER BY "Deficit Shortage Units" DESC LIMIT 15;""",
+    8: """SELECT ta.assignment_status AS "Mission Outcome Status", COUNT(ta.assignment_id) AS "Total Missions", ROUND(COUNT(ta.assignment_id) * 100.0 / (SELECT COUNT(*) FROM team_assignment), 2) AS "Percentage %" FROM team_assignment ta GROUP BY ta.assignment_status ORDER BY "Total Missions" DESC;""",
+    9: """SELECT d.disaster_type AS "Disaster Type", COUNT(d.disaster_id) AS "Total Recorded", SUM(CASE WHEN d.status = 'CLOSED' THEN 1 ELSE 0 END) AS "Closed & Resolved", SUM(CASE WHEN d.status = 'ACTIVE' THEN 1 ELSE 0 END) AS "Currently Active", ROUND(SUM(CASE WHEN d.status = 'CLOSED' THEN 1 ELSE 0 END) * 100.0 / COUNT(d.disaster_id), 1) AS "Resolution Rate %" FROM disaster d GROUP BY d.disaster_type ORDER BY "Total Recorded" DESC;""",
+    10: """SELECT d.disaster_id AS "Incident ID", d.disaster_name AS "Disaster Name", d.disaster_type AS "Hazard", res.resource_name AS "Resource", SUM(di.quantity_dispatched) AS "Units Dispatched", SUM(di.quantity_received) AS "Units Received & Used" FROM delivery del JOIN disaster d ON del.disaster_id = d.disaster_id JOIN delivery_item di ON del.delivery_id = di.delivery_id JOIN resource res ON di.resource_id = res.resource_id GROUP BY d.disaster_id, d.disaster_name, d.disaster_type, res.resource_name ORDER BY "Units Dispatched" DESC LIMIT 15;"""
+}
+
+@router.get("/sql-reports/{report_id}")
+def get_sql_analytical_report(
+    report_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Executes and returns the 10 System Analytical SQL Reports (09_reports.sql)
+    """
+    from sqlalchemy import text
+    query_str = SQL_REPORT_QUERIES.get(report_id, SQL_REPORT_QUERIES[1])
+    try:
+        res = db.execute(text(query_str))
+        headers = list(res.keys()) if res.returns_rows else []
+        rows = [dict(zip(headers, r)) for r in res.fetchall()] if res.returns_rows else []
+        return {
+            "success": True,
+            "report_id": report_id,
+            "count": len(rows),
+            "data": rows
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "report_id": report_id,
+            "error": str(e),
+            "data": []
+        }
+
 

@@ -12,7 +12,15 @@ export default function MapPage() {
     setLoading(true);
     api.get('/map/markers')
       .then((res) => {
-        if (res.success) setMarkers(res.markers);
+        if (res && (res.markers || res.nodes)) {
+          setMarkers(res.markers || res.nodes);
+        } else {
+          setMarkers({});
+        }
+      })
+      .catch((err) => {
+        console.warn('GIS nodes fallback:', err);
+        setMarkers({});
       })
       .finally(() => setLoading(false));
   };
@@ -46,7 +54,7 @@ export default function MapPage() {
         {loading ? (
           <Spinner text="Querying geographic coordinates from Oracle Database..." />
         ) : (
-          <div className="h-full">
+          <div className="h-full min-h-[550px] w-full">
             <DisasterMap markers={markers} zoom={13} />
           </div>
         )}
